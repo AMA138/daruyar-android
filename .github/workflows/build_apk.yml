@@ -21,7 +21,286 @@ jobs:
 
       - name: 3. Compile Native Android APK (Daruyar.apk)
         run: |
-          python3 -c "import zlib,base64;exec(zlib.decompress(base64.b64decode('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')).decode('utf-8'))"
+          set -e
+          mkdir -p src/ir/daruyar/app res/values assets gen obj build/apk
+
+          cat << 'EOF' > AndroidManifest.xml
+          <?xml version="1.0" encoding="utf-8"?>
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+              package="ir.daruyar.app"
+              android:versionCode="1"
+              android:versionName="1.0">
+              <uses-sdk android:minSdkVersion="21" android:targetSdkVersion="31" />
+              <uses-permission android:name="android.permission.INTERNET" />
+              <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+              <application
+                  android:label="دارویار"
+                  android:icon="@android:drawable/ic_lock_idle_alarm"
+                  android:usesCleartextTraffic="true">
+                  <activity
+                      android:name=".MainActivity"
+                      android:label="دارویار"
+                      android:exported="true"
+                      android:configChanges="orientation|screenSize|keyboardHidden">
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN" />
+                          <category android:name="android.intent.category.LAUNCHER" />
+                      </intent-filter>
+                  </activity>
+              </application>
+          </manifest>
+          EOF
+
+          cat << 'EOF' > res/values/strings.xml
+          <?xml version="1.0" encoding="utf-8"?>
+          <resources>
+              <string name="app_name">دارویار</string>
+          </resources>
+          EOF
+
+          cat << 'EOF' > src/ir/daruyar/app/MainActivity.java
+          package ir.daruyar.app;
+
+          import android.app.Activity;
+          import android.app.Notification;
+          import android.app.NotificationChannel;
+          import android.app.NotificationManager;
+          import android.app.PendingIntent;
+          import android.content.Context;
+          import android.content.Intent;
+          import android.os.Build;
+          import android.os.Bundle;
+          import android.view.Window;
+          import android.webkit.JavascriptInterface;
+          import android.webkit.WebSettings;
+          import android.webkit.WebView;
+          import android.webkit.WebViewClient;
+
+          public class MainActivity extends Activity {
+              private WebView webView;
+              private static final String CHANNEL_ID = "daruyar_channel";
+
+              @JavascriptInterface
+              public void updateNotification(String title, String body) {
+                  showPersistentNotification(title, body);
+              }
+
+              private void showPersistentNotification(String title, String body) {
+                  try {
+                      NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+                      if (nm == null) return;
+                      Intent intent = new Intent(this, MainActivity.class);
+                      int flags = PendingIntent.FLAG_UPDATE_CURRENT;
+                      if (Build.VERSION.SDK_INT >= 23) {
+                          flags |= PendingIntent.FLAG_IMMUTABLE;
+                      }
+                      PendingIntent pi = PendingIntent.getActivity(this, 0, intent, flags);
+                      Notification.Builder builder;
+                      if (Build.VERSION.SDK_INT >= 26) {
+                          NotificationChannel channel = new NotificationChannel(
+                              CHANNEL_ID, "Daruyar Reminder", NotificationManager.IMPORTANCE_DEFAULT
+                          );
+                          nm.createNotificationChannel(channel);
+                          builder = new Notification.Builder(this, CHANNEL_ID);
+                      } else {
+                          builder = new Notification.Builder(this);
+                      }
+                      builder.setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
+                             .setContentTitle(title)
+                             .setContentText(body)
+                             .setOngoing(true)
+                             .setContentIntent(pi);
+                      nm.notify(1001, builder.build());
+                  } catch (Exception e) {}
+              }
+
+              @Override
+              protected void onCreate(Bundle savedInstanceState) {
+                  super.onCreate(savedInstanceState);
+                  requestWindowFeature(Window.FEATURE_NO_TITLE);
+                  webView = new WebView(this);
+                  WebSettings s = webView.getSettings();
+                  s.setJavaScriptEnabled(true);
+                  s.setDomStorageEnabled(true);
+                  s.setAllowFileAccess(true);
+                  webView.addJavascriptInterface(this, "AndroidBridge");
+                  webView.setWebViewClient(new WebViewClient());
+                  webView.loadUrl("file:///android_asset/index.html");
+                  setContentView(webView);
+                  showPersistentNotification(
+                      "دارویار: نوار اعلان دائمی فعال است",
+                      "امروز: سه‌شنبه ۱۴۰۵/۰۸/۱۲ | داروی بعدی: متفورمین ۵۰۰ (کنترل قند خون)"
+                  );
+              }
+
+              @Override
+              public void onBackPressed() {
+                  if (webView != null && webView.canGoBack()) {
+                      webView.goBack();
+                  } else {
+                      super.onBackPressed();
+                  }
+              }
+          }
+          EOF
+
+          cat << 'EOF' > assets/index.html
+          <!DOCTYPE html>
+          <html lang="fa" dir="rtl">
+          <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>دارویار</title>
+          <style>
+            body { font-family: Tahoma, Arial, sans-serif; background: #F8FAFC; margin: 0; padding: 0; direction: rtl; }
+            .status-bar { background: #091E3A; color: #99F6E4; padding: 8px 14px; font-size: 11px; display: flex; justify-content: space-between; }
+            .notif-bar { background: linear-gradient(135deg, #0F2C59, #1E3A8A); color: #FFF; padding: 14px; border-bottom: 3px solid #0D9488; }
+            .notif-title { font-size: 11px; color: #5EEAD4; margin-bottom: 6px; }
+            .notif-main { font-size: 12.5px; font-weight: bold; line-height: 1.7; background: rgba(255,255,255,0.12); padding: 8px 10px; border-radius: 8px; margin-bottom: 10px; }
+            .btn-row { display: flex; gap: 6px; flex-wrap: wrap; }
+            .btn { border: none; padding: 8px 11px; border-radius: 8px; font-family: inherit; font-size: 11.5px; font-weight: bold; cursor: pointer; color: #FFF; }
+            .btn-green { background: #16A34A; }
+            .btn-amber { background: #D97706; }
+            .btn-red { background: #DC2626; }
+            .btn-teal { background: #0D9488; width: 100%; padding: 10px; font-size: 13px; margin-top: 8px; }
+            .btn-gold { background: #CA8A04; }
+            .btn-gray { background: #64748B; }
+            .content { padding: 12px; }
+            .alert-msg { background: #DBEAFE; color: #1E3A8A; border-right: 4px solid #2563EB; padding: 9px 11px; border-radius: 6px; font-size: 11.5px; font-weight: bold; margin-bottom: 12px; }
+            .card { background: #FFF; border-radius: 12px; padding: 12px; margin-bottom: 12px; border: 1px solid #E2E8F0; }
+            .card-title { font-size: 13.5px; font-weight: bold; color: #0F2C59; margin-bottom: 10px; border-bottom: 2px solid #F1F5F9; padding-bottom: 6px; }
+            .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+            label { font-size: 11px; color: #475569; display: block; margin-bottom: 3px; font-weight: bold; }
+            input, select { width: 100%; padding: 7px; border: 1px solid #CBD5E1; border-radius: 6px; font-family: inherit; font-size: 12px; box-sizing: border-box; }
+            table { width: 100%; border-collapse: collapse; font-size: 11px; margin-top: 8px; }
+            th { background: #0F2C59; color: #FFF; padding: 7px 3px; text-align: center; }
+            td { padding: 6px 4px; border-bottom: 1px solid #E2E8F0; }
+            .adh-box { background: #F0FDFA; border: 1px solid #99F6E4; color: #0F766E; padding: 8px 10px; border-radius: 8px; font-weight: bold; font-size: 12.5px; margin-bottom: 10px; }
+          </style>
+          </head>
+          <body>
+            <div class="status-bar">
+              <span>📱 Android APK | دارویار نسخه ۱.۰</span>
+              <span id="clockSpan">🔋 ۹۸٪ | 📶 4G</span>
+            </div>
+            <div class="notif-bar">
+              <div class="notif-title">🔔 نوار اعلان دائمی دارویار در بالای گوشی (Persistent Notification Bar)</div>
+              <div class="notif-main" id="notifBarText"></div>
+              <div class="btn-row">
+                <button class="btn btn-green" onclick="logAction('✅ مصرف شد (به‌موقع)')">✅ مصرف کردم</button>
+                <button class="btn btn-amber" onclick="logAction('⏳ مصرف با تعویق (۱۰ دقیقه بعد)')">⏳ ۱۰ دقیقه بعد</button>
+                <button class="btn btn-red" onclick="logAction('❌ مصرف نشد (نخوردم)')">❌ نخوردم</button>
+              </div>
+            </div>
+            <div class="content">
+              <div class="alert-msg" id="statusMsg">💡 وضعیت: اپلیکیشن اندروید دارویار آماده است.</div>
+              <div class="card">
+                <div class="card-title">➕ ثبت داروی جدید بیمار</div>
+                <div class="form-grid">
+                  <div><label>نام دارو:</label><input type="text" id="medName" value="متفورمین"></div>
+                  <div>
+                    <label>نوع دارو:</label>
+                    <select id="medCat">
+                      <option value="کنترل قند خون (دیابت نوع ۲)">کنترل قند خون (دیابت نوع ۲)</option>
+                      <option value="کنترل فشار خون">کنترل فشار خون</option>
+                      <option value="کنترل چربی خون">کنترل چربی خون</option>
+                    </select>
+                  </div>
+                  <div><label>دوز مصرفی:</label><input type="text" id="medDose" value="۵۰۰ میلی‌گرم"></div>
+                  <div><label>ساعت مصرف:</label><input type="text" id="medTime" value="14:00"></div>
+                </div>
+                <button class="btn btn-teal" onclick="addMed()">💾 ذخیره دارو و فعال‌سازی نوار اعلان</button>
+              </div>
+              <div class="card" style="border: 2px solid #0D9488;">
+                <div class="card-title">👨‍⚕️ پرونده و گزارش بالینی مصرف دارو (ویژه پزشک معالج)</div>
+                <div class="adh-box" id="adhText">📊 شاخص پایبندی بیمار به درمان: ۶۶.۷٪</div>
+                <div class="btn-row" style="margin-bottom:10px;">
+                  <button class="btn btn-gold" onclick="seedDemo()">⚡ درج داده نمونه ۷ روزه برای دمو استاد</button>
+                  <button class="btn btn-gray" onclick="clearAll()">🗑️ حذف همه اطلاعات (/delete_me)</button>
+                </div>
+                <table>
+                  <thead>
+                    <tr><th>#</th><th>نام و دوز</th><th>نوع دارو</th><th>روز و تاریخ</th><th>مقرر</th><th>مصرف</th><th>وضعیت</th></tr>
+                  </thead>
+                  <tbody id="logsBody"></tbody>
+                </table>
+              </div>
+            </div>
+          <script>
+          const DEFAULT_MEDS = [
+            {name: "آتورواستاتین", cat: "کنترل چربی خون", dose: "۲۰ میلی‌گرم", time: "22:00"},
+            {name: "لوزارتان", cat: "کنترل فشار خون", dose: "۲۵ میلی‌گرم", time: "08:00,20:00"},
+            {name: "متفورمین", cat: "کنترل قند خون", dose: "۵۰۰ میلی‌گرم", time: "14:00,20:00"}
+          ];
+          const DEFAULT_LOGS = [
+            {name: "آتورواستاتین", dose: "۲۰ میلی‌گرم", cat: "کنترل چربی خون", wday: "سه‌شنبه", pdate: "1405/08/12", sched: "22:00", actual: "22:03", status: "✅ مصرف شد (به‌موقع)"},
+            {name: "لوزارتان", dose: "۲۵ میلی‌گرم", cat: "کنترل فشار خون", wday: "دوشنبه", pdate: "1405/08/11", sched: "20:00", actual: "—", status: "❌ مصرف نشد (نخوردم)"},
+            {name: "متفورمین", dose: "۵۰۰ میلی‌گرم", cat: "کنترل قند خون", wday: "دوشنبه", pdate: "1405/08/11", sched: "17:00", actual: "17:01", status: "✅ مصرف شد (به‌موقع)"},
+            {name: "متفورمین", dose: "۵۰۰ میلی‌گرم", cat: "کنترل قند خون", wday: "دوشنبه", pdate: "1405/08/11", sched: "14:00", actual: "14:11", status: "⏳ تعویق (۱۰ دقیقه بعد)"},
+            {name: "لوزارتان", dose: "۲۵ میلی‌گرم", cat: "کنترل فشار خون", wday: "یکشنبه", pdate: "1405/08/10", sched: "20:00", actual: "20:00", status: "✅ مصرف شد (به‌موقع)"},
+            {name: "متفورمین", dose: "۵۰۰ میلی‌گرم", cat: "کنترل قند خون", wday: "یکشنبه", pdate: "1405/08/10", sched: "14:00", actual: "14:02", status: "✅ مصرف شد (به‌موقع)"}
+          ];
+          let meds = DEFAULT_MEDS.slice();
+          let logs = DEFAULT_LOGS.slice();
+          function nowHM() { const d = new Date(); return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0"); }
+          function renderAll() {
+            const m = meds.length ? meds[0] : {name:"متفورمین", cat:"کنترل قند خون", time:"14:00"};
+            const bar = "📅 امروز: سه‌شنبه 1405/08/12 | 💊 داروی بعدی: " + m.name + " (" + m.cat + ") | ⏱ ۱ ساعت و ۲۵ دقیقه دیگر (ساعت " + m.time.split(",")[0] + ")";
+            document.getElementById("notifBarText").innerText = bar;
+            if (window.AndroidBridge && window.AndroidBridge.updateNotification) {
+              window.AndroidBridge.updateNotification("🔔 یادآور هوشمند دارویار", bar);
+            }
+            const taken = logs.filter(l => l.status.indexOf("مصرف شد") !== -1).length;
+            const adh = logs.length ? ((taken / logs.length) * 100).toFixed(1) : "100.0";
+            document.getElementById("adhText").innerText = "📊 شاخص پایبندی بیمار به درمان: %" + adh;
+            document.getElementById("logsBody").innerHTML = logs.map((r, i) => `
+              <tr>
+                <td style="text-align:center;font-weight:bold;">${i+1}</td>
+                <td style="font-weight:bold;">${r.name}<br><small>${r.dose}</small></td>
+                <td>${r.cat}</td>
+                <td style="text-align:center;">${r.wday}<br><small>${r.pdate}</small></td>
+                <td style="text-align:center;">${r.sched}</td>
+                <td style="text-align:center;">${r.actual}</td>
+                <td style="font-weight:bold;">${r.status}</td>
+              </tr>`).join("");
+          }
+          function addMed() {
+            const name = document.getElementById("medName").value || "متفورمین";
+            const cat = document.getElementById("medCat").value;
+            const dose = document.getElementById("medDose").value || "۵۰۰ میلی‌گرم";
+            const time = document.getElementById("medTime").value || "14:00";
+            meds.unshift({name, cat, dose, time});
+            logs.unshift({name, dose, cat, wday:"سه‌شنبه", pdate:"1405/08/12", sched:time, actual:nowHM(), status:"✅ مصرف شد (ثبت اولیه)"});
+            renderAll();
+          }
+          function logAction(st) {
+            const m = meds.length ? meds[0] : {name:"متفورمین", cat:"کنترل قند خون", dose:"۵۰۰ میلی‌گرم", time:"14:00"};
+            logs.unshift({name:m.name, dose:m.dose, cat:m.cat, wday:"سه‌شنبه", pdate:"1405/08/12", sched:m.time.split(",")[0], actual:st.indexOf("نشد")!==-1?"—":nowHM(), status:st});
+            renderAll();
+          }
+          function seedDemo() { meds = DEFAULT_MEDS.slice(); logs = DEFAULT_LOGS.slice(); renderAll(); }
+          function clearAll() { meds = []; logs = []; renderAll(); }
+          renderAll();
+          </script>
+          </body>
+          </html>
+          EOF
+
+          SDK="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          BUILD_TOOLS=$(ls -d "$SDK/build-tools/"* | sort -V | tail -n 1)
+          ANDROID_JAR=$(ls "$SDK/platforms/"android-*/android.jar | sort -V | tail -n 1)
+
+          "$BUILD_TOOLS/aapt2" compile --dir res -o compiled_res.zip
+          "$BUILD_TOOLS/aapt2" link -o unaligned.apk -I "$ANDROID_JAR" --manifest AndroidManifest.xml -R compiled_res.zip -A assets --java gen
+
+          javac -encoding UTF-8 -source 1.8 -target 1.8 -classpath "$ANDROID_JAR" -d obj $(find gen src -name "*.java")
+          "$BUILD_TOOLS/d8" --lib "$ANDROID_JAR" --output . $(find obj -name "*.class")
+          zip -uj unaligned.apk classes.dex
+
+          "$BUILD_TOOLS/zipalign" -f 4 unaligned.apk aligned.apk
+          rm -f debug.keystore
+          keytool -genkeypair -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Daruyar,OU=BME,O=Uni,L=Tehran,S=Tehran,C=IR"
+          "$BUILD_TOOLS/apksigner" sign --ks debug.keystore --ks-pass pass:android --key-pass pass:android --out build/apk/Daruyar.apk aligned.apk
 
       - name: 4. Upload Ready APK (Daruyar-Android-APK)
         uses: actions/upload-artifact@v4
