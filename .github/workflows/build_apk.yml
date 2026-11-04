@@ -291,11 +291,11 @@ jobs:
           ANDROID_JAR=$(ls "$SDK/platforms/"android-*/android.jar | sort -V | tail -n 1)
 
           "$BUILD_TOOLS/aapt2" compile --dir res -o compiled_res.zip
-          "$BUILD_TOOLS/aapt2" link -o unaligned.apk -I "$ANDROID_JAR" --manifest AndroidManifest.xml -R compiled_res.zip -A assets --java gen
+          "$BUILD_TOOLS/aapt2" link --auto-add-overlay -o unaligned.apk -I "$ANDROID_JAR" --manifest AndroidManifest.xml -R compiled_res.zip -A assets --java gen
 
           javac -encoding UTF-8 -source 1.8 -target 1.8 -classpath "$ANDROID_JAR" -d obj $(find gen src -name "*.java")
           "$BUILD_TOOLS/d8" --lib "$ANDROID_JAR" --output . $(find obj -name "*.class")
-          zip -uj unaligned.apk classes.dex
+          zip -j unaligned.apk classes.dex
 
           "$BUILD_TOOLS/zipalign" -f 4 unaligned.apk aligned.apk
           rm -f debug.keystore
