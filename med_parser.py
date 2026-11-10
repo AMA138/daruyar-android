@@ -11,8 +11,7 @@ from schedule import generate_due_times, parse_frequency, to_ascii_digits
 
 GROUPS = {
     "chronic": "داروهای بیماری‌های مزمن",
-    "sport": "مکمل‌های ورزشی و بدنسازی",
-    "prosthetic": "مراقبت پروتز و دندانپزشکی",
+    "sport": "ورزش و تندرستی",
     "beauty": "آرایشی و بهداشتی (پوست و مو)",
 }
 
