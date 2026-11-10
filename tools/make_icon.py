@@ -42,8 +42,19 @@ def load_logo():
     return draw_logo()
 
 
+def make_round(img):
+    """برش دایره‌ای با گوشه‌های شفاف (آیکون گرد)"""
+    img = img.convert("RGBA")
+    big = 4
+    mask = Image.new("L", (img.width * big, img.height * big), 0)
+    ImageDraw.Draw(mask).ellipse((0, 0, img.width * big - 1, img.height * big - 1), fill=255)
+    mask = mask.resize(img.size, Image.LANCZOS)
+    img.putalpha(mask)
+    return img
+
+
 def main():
-    logo = load_logo()
+    logo = make_round(load_logo())
     os.makedirs(os.path.join(ROOT, "android", "assets"), exist_ok=True)
     logo.resize((512, 512), Image.LANCZOS).save(os.path.join(ROOT, "android", "assets", "icon.png"))
     for folder, px in (("mdpi", 48), ("hdpi", 72), ("xhdpi", 96), ("xxhdpi", 144), ("xxxhdpi", 192)):

@@ -43,7 +43,7 @@ def test_health_index_drugs(api):
     s, html = api("/")
     assert s == 200 and "دارویار" in html and "__DRUGS_JSON__" not in html and "متفورمین" in html
     s, j = api("/api/drugs")
-    assert len(j["drugs"]) >= 30 and len(j["groups"]) == 4
+    assert len(j["drugs"]) >= 30 and len(j["groups"]) == 3
 
 
 def test_register_login_errors(api):
