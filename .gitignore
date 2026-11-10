@@ -1,0 +1,9 @@
+.env
+*.db
+__pycache__/
+.venv/
+.pytest_cache/
+build/
+android/assets/
+*.apk
+*.jks
