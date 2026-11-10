@@ -8,6 +8,8 @@ import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.graphics.drawable.Icon;
 import android.os.Build;
@@ -99,12 +101,27 @@ public class MainActivity extends Activity {
         return new Notification.Action.Builder(Icon.createWithResource(this, android.R.drawable.ic_menu_agenda), label, pi).build();
     }
 
+    /** لوگوی اپ برای نمایش بزرگ در نوتیفیکیشن */
+    private Bitmap logoBitmap() {
+        try {
+            return BitmapFactory.decodeResource(getResources(), getApplicationInfo().icon);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
     private void showNotification(String title, String text) {
         Intent open = new Intent(this, MainActivity.class);
         open.setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);
         PendingIntent content = PendingIntent.getActivity(this, 0, open, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         Notification n = new Notification.Builder(this, CHANNEL_ID)
                 .setSmallIcon(android.R.drawable.ic_popup_reminder)
+                .setColor(Color.parseColor("#008975"))
+                .setLargeIcon(logoBitmap())
+                .setSubText("دارویار · یادآور دارو")
+                .setCategory(Notification.CATEGORY_REMINDER)
+                .setVisibility(Notification.VISIBILITY_PUBLIC)
+                .setShowWhen(false)
                 .setContentTitle(title)
                 .setContentText(text)
                 .setStyle(new Notification.BigTextStyle().bigText(text))

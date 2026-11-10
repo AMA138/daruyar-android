@@ -1,5 +1,6 @@
 """
-tools/make_icon.py - ساخت لوگوی دارویار (کپسول سفید + زنگوله‌ی سبز در حلقه‌ی سبز کله‌غازی روی سرمه‌ای)
+tools/make_icon.py - ساخت آیکون‌های اپ از لوگوی نهایی (tools/logo.png).
+اگر tools/logo.png نبود، لوگوی ساده‌ی رسم‌شده با کد استفاده می‌شود.
 خروجی: android/assets/icon.png و android/res/mipmap-*/ic_launcher.png   (نیازمند: pip install pillow)
 """
 import os
@@ -9,6 +10,7 @@ NAVY, TEAL, GREEN, WHITE, GREY = "#153A5B", "#008975", "#2FBF8F", "#FFFFFF", "#D
 S = 1024
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
+LOGO_FILE = os.path.join(HERE, "logo.png")
 
 
 def draw_logo(size=S):
@@ -34,8 +36,14 @@ def draw_logo(size=S):
     return img
 
 
+def load_logo():
+    if os.path.exists(LOGO_FILE):
+        return Image.open(LOGO_FILE).convert("RGB")
+    return draw_logo()
+
+
 def main():
-    logo = draw_logo()
+    logo = load_logo()
     os.makedirs(os.path.join(ROOT, "android", "assets"), exist_ok=True)
     logo.resize((512, 512), Image.LANCZOS).save(os.path.join(ROOT, "android", "assets", "icon.png"))
     for folder, px in (("mdpi", 48), ("hdpi", 72), ("xhdpi", 96), ("xxhdpi", 144), ("xxxhdpi", 192)):
