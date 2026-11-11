@@ -2,7 +2,7 @@
 server.py - سرور REST دارویار (فقط کتابخانه‌ی استاندارد؛ Windows / Linux / Pydroid 3)
   python server.py            # اجرا روی DARUYAR_HOST:DARUYAR_PORT
 اندپوینت‌ها: /api/register /api/login /api/me /api/sync /api/meds /api/logs /api/parse
-             /api/consent /api/link_code /api/delete_me /api/bale_webhook /api/drugs /api/health
+             /api/consent /api/profile /api/link_code /api/delete_me /api/bale_webhook /api/drugs /api/health
 """
 import base64
 import json
@@ -183,6 +183,14 @@ class Handler(BaseHTTPRequestHandler):
                 db.upsert_meds(user["id"], data.get("meds"), dbp)
                 db.insert_logs(user["id"], data.get("logs"), dbp)
                 return self._send(200, self._state(user))
+            if path == "/api/profile":
+                fields = {k: data[k] for k in ("display_name", "profile", "wake_time", "lunch_time", "dinner_time") if k in data}
+                try:
+                    updated = db.update_profile(user["id"], dbp, **fields)
+                except ValueError as exc:
+                    msg = {"time": messages.PROFILE_BAD_TIME, "profile": messages.PROFILE_BAD_TYPE}.get(str(exc), messages.AUTH_BAD)
+                    return self._send(400, {"error": msg})
+                return self._send(200, {"user": updated})
             if path == "/api/consent":
                 db.set_user_consent(user["id"], dbp)
                 return self._send(200, {"ok": True})

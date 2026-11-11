@@ -1,7 +1,7 @@
 import med_parser as mp
 
 
-def test_bank_has_four_groups():
+def test_bank_has_three_groups():
     assert {d["group"] for d in mp.DRUGS} == set(mp.GROUPS)
     assert len(mp.DRUGS) >= 30
     assert all(d["meal_relation"] for d in mp.DRUGS)

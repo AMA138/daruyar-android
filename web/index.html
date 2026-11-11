@@ -175,6 +175,7 @@ const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":
 const uid = () => "c" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 const faNum = (n) => String(n).replace(/\d/g, (d) => "۰۱۲۳۴۵۶۷۸۹"[d]);
 
+const MEAL_NOTE = "ساعت بیداری، ناهار و شام فقط برای پیشنهاد ساعت یادآور استفاده می‌شود؛ ساعت نهایی مصرف دارو را طبق نسخه‌ی پزشک یا برچسب دارو تنظیم کنید.";
 const DEF_SET = {notifDate: true, notifMed: true, notifNext: true, leadMin: 10, repeatMin: 5, repeatCount: 2, sound: true, vibrate: true};
 let st = load();
 let ui = {tab: "today", group: null, form: null, preview: [], authMode: "login", err: "", link: null, sheet: false, busy: false};
@@ -212,6 +213,12 @@ async function api(path, method = "GET", body) {
 }
 async function sync(silent) {
   if (!st.token || base() === null) return;
+  if (st.profileDirty && st.user) {
+    try {
+      const pj = await api("/api/profile", "POST", {display_name: st.user.display_name, profile: st.user.profile, lunch_time: st.user.lunch_time || "", dinner_time: st.user.dinner_time || "", wake_time: st.user.wake_time || ""});
+      st.user = pj.user; st.profileDirty = false;
+    } catch (e) { if (e.status === 400) st.profileDirty = false; }
+  }
   try {
     const j = await api("/api/sync", "POST", {meds: st.meds, logs: st.logs});
     st.meds = j.meds; st.logs = j.logs; st.user = j.user; st.lastSync = Date.now(); save();
@@ -362,12 +369,16 @@ async function doAuth() {
   const u = $("#au").value.trim(), p = $("#ap").value, mode = ui.authMode;
   const sv = $("#asrv"); if (sv) { st.server = sv.value.trim(); save(); }
   if (u.length < 3 || p.length < 6) { ui.err = "نام کاربری حداقل ۳ و رمز عبور حداقل ۶ نویسه باشد."; return render(); }
+  const guestMeals = st.guest && st.user ? {wake_time: st.user.wake_time || "", lunch_time: st.user.lunch_time || "", dinner_time: st.user.dinner_time || ""} : null;
   try {
     const body = {username: u, password: p};
     if (mode === "register") { body.profile = $("#apr").value; body.display_name = ($("#adn").value || u); }
     const j = await api(mode === "register" ? "/api/register" : "/api/login", "POST", body);
     st.token = j.token; st.user = j.user; st.guest = false; ui.err = "";
-    if (mode === "register") ui.group = PROFILE_GROUP[j.user.profile];
+    if (mode === "register") {
+      ui.group = PROFILE_GROUP[j.user.profile];
+      if (guestMeals && (guestMeals.wake_time || guestMeals.lunch_time || guestMeals.dinner_time)) { st.user = Object.assign({}, st.user, guestMeals); st.profileDirty = true; }
+    }
     save(); render(); sync(true);
   } catch (e) { ui.err = e.offline ? "اتصال به سرور برقرار نشد. آدرس سرور را بررسی کنید یا «ادامه بدون سرور» را بزنید." : e.message; render(); }
 }
@@ -437,7 +448,8 @@ function viewAdd() {
    <p class="muted" style="margin:4px 0 0">دوز و شرط پیش‌فرض فقط برای تسریع ثبت است؛ مقدار نهایی را طبق نسخه‌ی پزشک یا برچسب دارو وارد کنید.</p>
    <label for="fm">شرایط مصرف</label><select id="fm" onchange="ui.form.meal=this.value">${MEALS.map((m) => `<option ${m === f.meal ? "selected" : ""}>${esc(m)}</option>`).join("")}</select>
    <label for="ff">دفعات مصرف در روز</label><select id="ff" onchange="setFreq(+this.value)">${[1, 2, 3, 4].map((n) => `<option value="${n}" ${n === f.freq ? "selected" : ""}>${faNum(n)} بار</option>`).join("")}</select>
-   <div class="row" style="margin-top:8px">${f.times.map((t, i) => `<input type="time" value="${esc(t)}" style="width:110px" aria-label="ساعت ${i + 1}" onchange="ui.form.times[${i}]=this.value">`).join("")}</div>
+   <div class="row" style="margin-top:8px">${f.times.map((t, i) => `<input type="time" value="${esc(t)}" style="width:110px" aria-label="ساعت ${i + 1}" onfocus="ui.form.slot=${i}" onchange="ui.form.times[${i}]=this.value">`).join("")}</div>
+   ${mealHint()}
    <label for="fdays">مدت مصرف (روز)</label><input id="fdays" type="number" min="1" max="365" value="${f.days}" oninput="ui.form.days=+this.value">
    <button class="btn" style="width:100%;margin-top:12px" onclick="submitMed()">افزودن به برنامه</button></div>
   <div class="card"><h2>دریافت خودکار نسخه‌ی الکترونیک</h2>
@@ -449,6 +461,17 @@ function viewAdd() {
   ${prev}
   <div class="card"><h2>اتصال به بات بله</h2><p class="muted" style="margin-top:0">نسخه را در بله به بات دارویار فوروارد کنید تا خودکار در برنامه ثبت شود.</p>
    <button class="btn" onclick="getLink()">دریافت کد اتصال</button></div>${link}`;
+}
+function mealHint() {
+  const u = st.user || {};
+  if (!u.wake_time && !u.lunch_time && !u.dinner_time) return `<p class="muted" style="margin:6px 0 0">می‌توانید در تب «پروفایل» ساعت تقریبی بیداری، ناهار و شام را ثبت کنید تا اینجا برای انتخاب ساعت پیشنهاد شود.</p>`;
+  const b = (ic, t, v) => v ? `<button type="button" class="btn sec small" onclick="useMeal('${esc(v)}')">${ic} ${t} من (${faNum(v)})</button>` : "";
+  return `<div class="row" style="margin-top:8px">${b("☀️", "بیداری", u.wake_time)}${b("🍽", "ناهار", u.lunch_time)}${b("🌙", "شام", u.dinner_time)}</div>
+   <p class="muted" style="margin:4px 0 0">ابتدا کادر ساعت موردنظر را لمس کنید، سپس یکی از دکمه‌ها را بزنید. ساعت نهایی را طبق نسخه‌ی پزشک یا برچسب دارو تنظیم کنید.</p>`;
+}
+function useMeal(t) {
+  const f = ui.form; if (!f) return;
+  f.times[Math.min(f.slot || 0, f.times.length - 1)] = t; render();
 }
 function pickDrug(name) {
   const d = DRUGS.find((x) => x.name_fa === name); if (!d) { ui.form.drug = ""; return; }
@@ -486,6 +509,38 @@ function viewRecord() {
   <button class="btn sec noprint" style="margin-top:10px" onclick="window.print()">🖨 چاپ گزارش</button></div>`;
 }
 
+/* ---------- تب ۴: پروفایل ---------- */
+function viewProfile() {
+  const u = st.user || {};
+  return `<div class="card"><h2>👤 پروفایل من</h2>
+   <label for="pn">نام نمایشی</label><input id="pn" maxlength="40" value="${esc(u.display_name || "")}">
+   <label for="pt">نوع پروفایل</label><select id="pt">${Object.entries(PROFILES).map(([k, v]) => `<option value="${k}" ${u.profile === k ? "selected" : ""}>${v}</option>`).join("")}</select>
+   <div class="muted" style="margin-top:6px">${esc(u.username || "")} ${st.token ? "• متصل به سرور" : "• حالت آفلاین"}</div></div>
+  <div class="card"><h2>⏰ ساعت‌های تقریبی روز</h2>
+   <p class="muted" style="margin-top:0"><b>چرا ثبت می‌کنیم؟</b> بعضی داروها شرط مصرف مرتبط با غذا (مثل «همراه با غذا» یا «بعد از غذا») یا «ناشتا» دارند. با دانستن ساعت تقریبی بیداری، ناهار و شام شما، هنگام ثبت دارو می‌توانیم ساعت یادآور را به‌جای ساعت پیش‌فرض (مثلاً ۰۸:۰۰ یا ۲۰:۰۰)، نزدیک برنامه‌ی واقعی خودتان پیشنهاد کنیم. این ساعت‌ها فقط پیشنهاد هستند و همیشه می‌توانید تغییرشان دهید.</p>
+   <div class="row"><div style="flex:1"><label for="pw">بیداری (حدودی)</label><input id="pw" type="time" value="${esc(u.wake_time || "")}"></div>
+   <div style="flex:1"><label for="pl">ناهار (حدودی)</label><input id="pl" type="time" value="${esc(u.lunch_time || "")}"></div>
+   <div style="flex:1"><label for="pd">شام (حدودی)</label><input id="pd" type="time" value="${esc(u.dinner_time || "")}"></div></div>
+   <p class="muted">خالی‌گذاشتن هر کدام مجاز است. ${esc(MEAL_NOTE)}</p>
+   <button class="btn" style="width:100%" onclick="saveProfile()">ذخیره‌ی پروفایل</button></div>`;
+}
+async function saveProfile() {
+  const f = {display_name: $("#pn").value.trim(), profile: $("#pt").value, wake_time: $("#pw").value || "", lunch_time: $("#pl").value || "", dinner_time: $("#pd").value || ""};
+  if (!f.display_name) f.display_name = (st.user || {}).username || "";
+  const typeChanged = f.profile !== (st.user || {}).profile;
+  st.user = Object.assign({}, st.user, f);
+  if (typeChanged) { ui.group = PROFILE_GROUP[f.profile]; ui.form = null; }
+  if (st.token) {
+    try { const j = await api("/api/profile", "POST", f); st.user = j.user; st.profileDirty = false; toast("پروفایل ذخیره شد"); }
+    catch (e) {
+      if (e.offline) { st.profileDirty = true; toast("روی گوشی ذخیره شد؛ بعداً با سرور همگام می‌شود"); }
+      else if (e.status === 401) { st.token = null; toast("نشست منقضی شد؛ دوباره وارد شوید"); }
+      else toast(e.message);
+    }
+  } else toast("پروفایل روی گوشی ذخیره شد");
+  save(); render();
+}
+
 /* ---------- پروفایل و تنظیمات ---------- */
 const sw = (k, t) => `<label class="sw"><span>${t}</span><input type="checkbox" ${st.settings[k] ? "checked" : ""} onchange="setSet('${k}',this.checked)"><i></i></label>`;
 const numF = (k, t, a, b) => `<div><label>${t}</label><input type="number" inputmode="numeric" min="${a}" max="${b}" value="${st.settings[k]}" onchange="setSet('${k}',this.value)"></div>`;
@@ -514,10 +569,10 @@ async function deleteMe() { if (!confirm("همه‌ی اطلاعات شما از
 function render() {
   const root = $("#root");
   if (!st.user) { root.innerHTML = viewAuth(); return; }
-  const tabs = [["today", "🏠", "امروز"], ["add", "+", "ثبت دارو"], ["record", "📋", "پرونده"]];
+  const tabs = [["today", "🏠", "امروز"], ["add", "+", "ثبت دارو"], ["record", "📋", "پرونده"], ["profile", "👤", "پروفایل"]];
   root.innerHTML = `<header class="top">${LOGO}<div><h1>دارویار</h1><small>دارویار، یادآور داروی تو…</small></div>
    <button class="chip" onclick="ui.sheet=true;render()" aria-label="تنظیمات">⚙️ تنظیمات</button></header>
-   <main>${ui.tab === "today" ? viewToday() : ui.tab === "add" ? viewAdd() : viewRecord()}<p class="disc">دارویار فقط یادآور است و توصیه‌ی پزشکی نمی‌دهد. برای هر سؤال درباره‌ی دارو با پزشک یا داروساز صحبت کنید.</p></main>
+   <main>${ui.tab === "today" ? viewToday() : ui.tab === "add" ? viewAdd() : ui.tab === "profile" ? viewProfile() : viewRecord()}<p class="disc">دارویار فقط یادآور است و توصیه‌ی پزشکی نمی‌دهد. برای هر سؤال درباره‌ی دارو با پزشک یا داروساز صحبت کنید.</p></main>
    <nav class="tabs">${tabs.map((t) => `<button class="${ui.tab === t[0] ? "on" : ""}${t[0] === "add" ? " mid" : ""}" onclick="ui.tab='${t[0]}';window.scrollTo(0,0);render()"><span class="ic">${t[1]}</span>${t[2]}</button>`).join("")}</nav>${ui.sheet ? viewSheet() : ""}`;
   notify();
 }

@@ -6,6 +6,7 @@ db.py - پایگاه داده SQLite دارویار (چندکاربره + ثبت
 """
 import hashlib
 import hmac
+import re
 import secrets
 import sqlite3
 import time
@@ -38,6 +39,7 @@ SCHEMA = {
 }
 # ستون‌های اضافه‌شده در اسپرینت ۲ (برای مهاجرت دیتابیس قدیمی)
 NEW_COLUMNS = {
+    "users": [("lunch_time", "TEXT DEFAULT ''"), ("dinner_time", "TEXT DEFAULT ''"), ("wake_time", "TEXT DEFAULT ''")],
     "medications": [("user_id", "TEXT DEFAULT 'default_user'"), ("client_id", "TEXT"), ("group_key", "TEXT DEFAULT ''"),
                     ("deleted", "INTEGER DEFAULT 0"), ("updated_at", "INTEGER DEFAULT 0")],
     "medication_logs": [("user_id", "TEXT DEFAULT 'default_user'"), ("client_id", "TEXT"), ("meal_relation", "TEXT DEFAULT ''")],
@@ -85,8 +87,12 @@ def hash_password(password, salt=None):
 
 
 def _user_dict(row):
+    keys = row.keys()
     return {"id": str(row["id"]), "username": row["username"], "display_name": row["display_name"],
-            "profile": row["profile"], "bale_linked": bool(row["bale_chat_id"])}
+            "profile": row["profile"], "bale_linked": bool(row["bale_chat_id"]),
+            "lunch_time": (row["lunch_time"] or "") if "lunch_time" in keys else "",
+            "dinner_time": (row["dinner_time"] or "") if "dinner_time" in keys else "",
+            "wake_time": (row["wake_time"] or "") if "wake_time" in keys else ""}
 
 
 def register_user(username, password, profile="general", display_name="", db_path="daruyar.db"):
@@ -108,6 +114,48 @@ def register_user(username, password, profile="general", display_name="", db_pat
         raise ValueError("exists")
     finally:
         conn.close()
+    return _user_dict(row)
+
+
+def normalize_hhmm(value):
+    """«۱۳:۰۰» یا «13:0» → «13:00»؛ رشته‌ی خالی یعنی پاک‌کردن؛ مقدار نامعتبر ValueError('time')"""
+    v = schedule.to_ascii_digits(value or "").strip()
+    if not v:
+        return ""
+    m = re.fullmatch(r"(\d{1,2}):(\d{2})", v)
+    if not m or int(m.group(1)) > 23 or int(m.group(2)) > 59:
+        raise ValueError("time")
+    return "%02d:%02d" % (int(m.group(1)), int(m.group(2)))
+
+
+def update_profile(user_id, db_path="daruyar.db", **fields):
+    """
+    به‌روزرسانی پروفایل: display_name، profile، wake_time، lunch_time، dinner_time (فقط کلیدهای داده‌شده تغییر می‌کنند).
+    خطاها: ValueError('time') ساعت نامعتبر ، ValueError('profile') نوع پروفایل نامعتبر ، ValueError('missing') کاربر نیست.
+    """
+    sets, vals = [], []
+    if "display_name" in fields:
+        sets.append("display_name=?")
+        vals.append(str(fields["display_name"] or "").strip()[:40])
+    if "profile" in fields:
+        if fields["profile"] not in PROFILES:
+            raise ValueError("profile")
+        sets.append("profile=?")
+        vals.append(fields["profile"])
+    for key in ("wake_time", "lunch_time", "dinner_time"):
+        if key in fields:
+            sets.append(key + "=?")
+            vals.append(normalize_hhmm(fields[key]))
+    conn = connect(db_path)
+    try:
+        if sets:
+            conn.execute("UPDATE users SET " + ", ".join(sets) + " WHERE id=?", vals + [int(user_id)])
+            conn.commit()
+        row = conn.execute("SELECT * FROM users WHERE id=?", (int(user_id),)).fetchone()
+    finally:
+        conn.close()
+    if row is None:
+        raise ValueError("missing")
     return _user_dict(row)
 
 

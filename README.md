@@ -17,9 +17,9 @@ python app_ui.py             # سرور + پنجره‌ی موبایلی (روی
 | سرور REST + سرو HTML | `server.py` |
 | پایگاه داده چندکاربره، ثبت‌نام/ورود (PBKDF2-SHA256 با salt)، نشست، همگام‌سازی، پایبندی | `db.py` |
 | زمان‌بندی (تهران، تاریخ شمسی بدون jdatetime، `parse_frequency`) | `schedule.py` |
-| بانک ۳۰ دارو/مکمل در ۴ دسته + استخراج از متن نسخه | `data/drugs_seed.csv`, `med_parser.py` |
+| بانک ۳۰ دارو/مکمل در ۳ دسته + استخراج از متن نسخه | `data/drugs_seed.csv`, `med_parser.py` |
 | متن‌ها و لیست شرایط مصرف | `messages.py` |
-| رابط (ورود، ۳ تب، حلقه‌ی پایبندی، جدول MAR، پل نوتیفیکیشن) | `web/index.html` |
+| رابط (ورود، ۴ تب شامل پروفایل و ساعت تقریبی بیداری/ناهار/شام، حلقه‌ی پایبندی، جدول MAR، پل نوتیفیکیشن) | `web/index.html` |
 | کلاینت بله | `bale_client.py` |
 | اپ اندروید و بیلد | `android/`, `tools/`, `.github/workflows/build_apk.yml` |
 | Flet قدیمی (بایگانی) | `legacy/main_flet.py` |
@@ -34,6 +34,7 @@ python app_ui.py             # سرور + پنجره‌ی موبایلی (روی
 | `POST /api/parse` `{text}` | استخراج دارو از متن نسخه (چیزی ذخیره نمی‌کند) |
 | `POST /api/link_code` | کد ۶ نویسه‌ای اتصال حساب به بات بله |
 | `POST /api/bale_webhook` | پیام بله/n8n: `{message:{chat:{id},text}}` یا ساده `{chat_id,text}` |
+| `POST /api/profile` `{display_name?,profile?,wake_time?,lunch_time?,dinner_time?}` | به‌روزرسانی پروفایل؛ ساعت‌ها `HH:MM` (خالی = پاک‌کردن)؛ خروجی `user` |
 | `POST /api/delete_me` ، `GET /api/health` ، `GET /api/drugs` | حذف کامل داده‌ها / سلامت / بانک دارو |
 
 ## بات بله و n8n
