@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:layoutDirection="rtl">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layoutDirection="rtl">
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:layoutDirection="rtl">
+
+            <TextView
+                android:id="@+id/n_title"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="start"
+                android:singleLine="true"
+                android:textAppearance="@android:style/TextAppearance.Material.Notification.Title"
+                android:textDirection="rtl" />
+
+            <TextView
+                android:id="@+id/n_sub"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="start"
+                android:singleLine="true"
+                android:textAppearance="@android:style/TextAppearance.Material.Notification"
+                android:textDirection="rtl" />
+        </LinearLayout>
+
+        <Chronometer
+            android:id="@+id/n_timer"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:textColor="#00A68C"
+            android:textSize="22sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <ProgressBar
+        android:id="@+id/n_bar"
+        style="?android:attr/progressBarStyleHorizontal"
+        android:layout_width="match_parent"
+        android:layout_height="8dp"
+        android:layout_marginTop="6dp"
+        android:max="1000"
+        android:progress="1000"
+        android:progressDrawable="@drawable/bar_progress" />
+</LinearLayout>

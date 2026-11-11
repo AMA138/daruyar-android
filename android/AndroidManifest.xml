@@ -1,18 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="ir.daruyar.app"
-    android:versionCode="2"
-    android:versionName="2.0">
+    android:versionCode="3"
+    android:versionName="3.0">
 
     <uses-sdk android:minSdkVersion="26" android:targetSdkVersion="34" />
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
 
     <application
         android:label="دارویار"
         android:icon="@mipmap/ic_launcher"
+        android:theme="@android:style/Theme.DeviceDefault.NoActionBar"
+        android:supportsRtl="true"
         android:usesCleartextTraffic="true"
         android:allowBackup="false">
 
@@ -27,5 +32,14 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <receiver android:name=".MainActivity$AlarmReceiver" android:exported="false" />
+        <receiver android:name=".MainActivity$ActionReceiver" android:exported="false" />
+        <receiver android:name=".MainActivity$BootReceiver" android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
     </application>
 </manifest>

@@ -102,11 +102,61 @@ input:focus,select:focus,textarea:focus{border-color:var(--teal);box-shadow:0 0 
 .auth .logo img{width:108px;height:108px;border-radius:50%;box-shadow:0 14px 34px rgba(0,0,0,.35)}
 .auth .card{border-radius:26px;box-shadow:0 16px 40px rgba(0,0,0,.25)}
 .seg{border-radius:14px}.seg button.on{box-shadow:0 2px 8px rgba(0,0,0,.14)}
+/* ---- v3: هیرو، آمار، کاشی‌ها، تنظیمات، شروع متحرک ---- */
+.card:has(.med){border-inline-start:0}
+.hero{text-align:center;padding:20px 14px 14px}
+.hero .hl{font-size:12.5px;color:#BDEFE4;margin-bottom:6px}
+.hero .hname{font-size:22px;font-weight:800;line-height:1.5}
+.hero .hsub{font-size:13.5px;color:#D6E8F2;margin-top:2px}
+.hero .hcount{font-size:46px;font-weight:800;letter-spacing:1px;line-height:1.25;margin-top:10px}
+.hero .hlbl{font-size:12.5px;color:#BDEFE4}
+.meter{height:10px;background:rgba(255,255,255,.18);border-radius:8px;overflow:hidden;margin:12px 4px 14px}
+.meter i{display:block;height:100%;background:linear-gradient(90deg,#2FE0B5,#7BF2D6);border-radius:8px;transition:width 1.2s ease}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.grid3 .btn.bar-b{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:10px 4px;min-height:64px;font-size:13px;border-radius:16px;width:100%}
+.grid3 .btn b{font-size:21px;line-height:1.1}
+.hello{display:flex;justify-content:space-between;align-items:baseline;margin:2px 4px 12px}
+.hello b{font-size:18px}.hello span{color:var(--mute);font-size:13px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
+.stat{border-radius:20px;padding:12px 6px;text-align:center}
+.stat b{display:block;font-size:20px;line-height:1.4}.stat span{font-size:11.5px;color:#475569}
+.stat.s1{background:#DDF3F7}.stat.s2{background:#E6E3FA}.stat.s3{background:#DDF5E6}
+.tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:0 0 14px}
+.tile{border:2px solid transparent;border-radius:18px;background:var(--tc);padding:10px 2px;font-size:11px;font-weight:700;color:#1d3a55;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;line-height:1.35}
+.tile span{font-size:22px}.tile.on{border-color:var(--teal);box-shadow:0 4px 12px rgba(0,137,117,.2)}
+.card.med{align-items:center;gap:12px}
+.mi{width:48px;height:48px;border-radius:16px;display:grid;place-items:center;font-size:23px;flex:none}
+.tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.x{border:0;background:#FDECEC;border-radius:12px;width:38px;height:38px;font-size:16px;cursor:pointer;flex:none}
+.sw{display:flex;align-items:center;justify-content:space-between;margin:8px 0;padding:11px 12px;background:#fff;border-radius:14px;color:var(--ink);font-size:14px}
+.sw input{display:none}
+.sw i{width:46px;height:26px;border-radius:14px;background:#CBD5E1;position:relative;flex:none;transition:.2s}
+.sw i::after{content:"";position:absolute;top:3px;right:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:.2s;box-shadow:0 1px 4px rgba(0,0,0,.3)}
+.sw input:checked+i{background:var(--teal)}.sw input:checked+i::after{right:23px}
+.fields3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.fields3 label{font-size:11.5px;min-height:34px}
+.tabs button.mid{overflow:visible}
+.tabs button.mid .ic{display:grid;place-items:center;width:56px;height:56px;margin:-32px auto 2px;border-radius:50%;background:linear-gradient(135deg,#00B398,#008975);color:#fff;font-size:30px;font-weight:400;box-shadow:0 8px 20px rgba(0,137,117,.45);border:4px solid #fff}
+.tabs button.mid.on{background:transparent}
+#splash{position:fixed;inset:0;z-index:99;background:radial-gradient(circle at 50% 38%,#0F5C7A 0,#153A5B 60%,#0E2A44 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;transition:opacity .6s,transform .6s}
+#splash.hide{opacity:0;transform:scale(1.05);pointer-events:none}
+.sp-logo{position:relative;width:132px;height:132px;display:grid;place-items:center;animation:spPop .9s cubic-bezier(.2,1.4,.4,1) both}
+.sp-logo img{width:132px;height:132px;border-radius:50%;position:relative;z-index:2;box-shadow:0 14px 40px rgba(0,0,0,.4);animation:spBell 1.5s ease-in-out .9s 2}
+.rp{position:absolute;inset:0;border-radius:50%;border:2px solid rgba(47,191,143,.7);animation:spWave 2.2s ease-out infinite}
+.rp.r2{animation-delay:.7s}.rp.r3{animation-delay:1.4s}
+.sp-name{font-size:32px;font-weight:800;color:#fff;opacity:0;animation:spUp .7s .5s both}
+.sp-tag{min-height:26px;font-size:15px;color:#BFEFE4}
+@keyframes spPop{0%{transform:scale(.2) rotate(-25deg);opacity:0}100%{transform:none;opacity:1}}
+@keyframes spBell{0%,100%{transform:rotate(0)}12%{transform:rotate(14deg)}28%{transform:rotate(-12deg)}44%{transform:rotate(9deg)}60%{transform:rotate(-6deg)}76%{transform:rotate(3deg)}}
+@keyframes spWave{0%{transform:scale(1);opacity:.9}100%{transform:scale(1.9);opacity:0}}
+@keyframes spUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){#splash *{animation-duration:.01ms!important;animation-iteration-count:1!important}}
 @media print{header.top,.tabs,.noprint{display:none!important}body{background:#fff}.card{box-shadow:none;border:1px solid #ccc}}
 @media (prefers-reduced-motion:no-preference){.toast{animation:pop .2s ease-out}@keyframes pop{from{opacity:0;transform:translate(-50%,8px)}}}
 </style>
 </head>
 <body>
+<div id="splash" aria-hidden="true"><div class="sp-logo"><i class="rp r1"></i><i class="rp r2"></i><i class="rp r3"></i></div><div class="sp-name">دارویار</div><div class="sp-tag" id="spTag"></div></div>
 <div id="root"></div>
 <script>
 "use strict";
@@ -125,15 +175,19 @@ const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":
 const uid = () => "c" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 const faNum = (n) => String(n).replace(/\d/g, (d) => "۰۱۲۳۴۵۶۷۸۹"[d]);
 
+const DEF_SET = {notifDate: true, notifMed: true, notifNext: true, leadMin: 10, repeatMin: 5, repeatCount: 2, sound: true, vibrate: true};
 let st = load();
 let ui = {tab: "today", group: null, form: null, preview: [], authMode: "login", err: "", link: null, sheet: false, busy: false};
 let snooze = null, syncTimer = null;
 
 function load() {
   const d = {user: null, token: null, meds: [], logs: [], server: "", guest: false, lastSync: null};
-  try { return Object.assign(d, JSON.parse(localStorage.getItem("dy_state") || "{}")); } catch (e) { return d; }
+  let r = d;
+  try { r = Object.assign(d, JSON.parse(localStorage.getItem("dy_state") || "{}")); } catch (e) { r = d; }
+  r.settings = Object.assign({}, DEF_SET, r.settings || {});
+  return r;
 }
-function save() { try { localStorage.setItem("dy_state", JSON.stringify(st)); } catch (e) {} }
+function save() { try { localStorage.setItem("dy_state", JSON.stringify(st)); } catch (e) {} pushSchedule(); }
 function toast(msg) {
   const t = document.createElement("div"); t.className = "toast"; t.textContent = msg; document.body.appendChild(t);
   setTimeout(() => t.remove(), 2600);
@@ -200,19 +254,61 @@ function nextDue() {
   }
   return best;
 }
-function barText() {
-  const now = tehran(), d = nextDue();
-  if (!d) return {title: `📅 ${now.weekday} ${now.date}`, text: "هنوز دارویی ثبت نشده است"};
-  return {
-    title: `💊 داروی بعدی: ${d.med.name} (${d.med.dose})`,
-    text: `📅 ${now.weekday} ${now.date}\n🍽 ${d.med.meal_relation || "—"}\n⏱ ${fmtRemain(d.diff)} (ساعت ${d.time})`,
-  };
+const timesOf = (m) => String(m.times_csv).split(",").map((x) => x.trim()).filter(Boolean);
+function prevElapsed() {
+  const now = tehran(); let best = null;
+  for (const m of st.meds.filter((x) => !x.deleted)) for (const t of timesOf(m)) {
+    const [h, mi] = t.split(":").map(Number); if (isNaN(h) || isNaN(mi)) continue;
+    const e = (now.min - (h * 60 + mi) + 1440) % 1440; if (best === null || e < best) best = e;
+  }
+  return best;
+}
+function heroState() {
+  const d = nextDue(); if (!d) return null;
+  const el = prevElapsed(), total = Math.max(1, (el === null ? 1440 : el) + d.diff);
+  const big = d.diff <= 0 ? "الان" : faNum(Math.floor(d.diff / 60)) + ":" + faNum(String(d.diff % 60).padStart(2, "0"));
+  return {d, pct: Math.max(0, Math.min(100, Math.round(d.diff / total * 100))), big,
+    lbl: d.diff <= 0 ? "وقت مصرف دارو است!" : "ساعت:دقیقه تا مصرف بعدی · ساعت " + faNum(d.time)};
 }
 function notify() {
-  const b = barText(), el = $("#barTxt");
-  if (el) el.textContent = b.title + "\n" + b.text;
-  try { if (window.AndroidBridge) window.AndroidBridge.updateNotification(b.title, b.text); } catch (e) {}
+  const h = heroState(); if (!h) return;
+  const a = $("#hcount"), b = $("#hlbl"), c = $("#hmeter");
+  if (a) a.textContent = h.big; if (b) b.textContent = h.lbl; if (c) c.style.width = h.pct + "%";
 }
+/* ---------- پل اندروید: برنامه‌ی دارو و تنظیمات برای زنگ و نوتیفیکیشن‌ها ---------- */
+let pushT = null;
+const gregKey = (d = new Date()) => new Intl.DateTimeFormat("en-CA", {timeZone: "Asia/Tehran"}).format(d).replace(/-/g, "");
+function pushSchedule() {
+  clearTimeout(pushT);
+  pushT = setTimeout(() => {
+    try {
+      if (!window.AndroidBridge || !window.AndroidBridge.syncSchedule) return;
+      const today = tehran().date, gk = gregKey(), on = !!(st.user || st.guest);
+      const done = st.logs.filter((l) => l.persian_date === today && kind(l.status) !== "snoozed").map((l) => l.med_name + "|" + l.scheduled_time + "|" + gk);
+      const meds = on ? st.meds.filter((m) => !m.deleted).map((m) => ({name: m.name, dose: m.dose, meal: m.meal_relation || "", times: timesOf(m)})) : [];
+      window.AndroidBridge.syncSchedule(JSON.stringify({settings: st.settings, meds, done}));
+    } catch (e) {}
+  }, 400);
+}
+window.nativeResume = () => {
+  try {
+    if (window.AndroidBridge && window.AndroidBridge.takeActions && (st.user || st.guest)) {
+      JSON.parse(window.AndroidBridge.takeActions() || "[]").forEach((x) => {
+        const m = st.meds.find((q) => !q.deleted && q.name === x.name);
+        if (m && ["taken", "snooze", "skip"].includes(x.act)) logDose(x.act, {med: m, time: x.time});
+      });
+    }
+  } catch (e) {}
+  render(); pushSchedule();
+};
+function setSet(k, v) {
+  const R = {leadMin: [0, 120], repeatMin: [1, 60], repeatCount: [0, 10]};
+  if (R[k]) v = Math.max(R[k][0], Math.min(R[k][1], Math.round(+v || 0)));
+  st.settings[k] = v; save();
+  const h = $("#setHint"); if (h) h.textContent = hintText();
+  toast("تنظیمات ذخیره شد");
+}
+const hintText = () => { const x = st.settings; return `از ${faNum(x.leadMin)} دقیقه قبل زنگ می‌خورد، هر ${faNum(x.repeatMin)} دقیقه ${faNum(x.repeatCount)} بار تکرار می‌شود و در لحظه‌ی مصرف هم یک بار زنگ می‌خورد.`; };
 
 /* ---------- منطق دارو و گزارش ---------- */
 const kind = (s) => /مصرف شد|مصرف کردم/.test(s) ? "taken" : /تعویق/.test(s) ? "snoozed" : "skipped";
@@ -295,19 +391,32 @@ function viewAuth() {
 }
 
 /* ---------- تب ۱: امروز ---------- */
+const GM = {chronic: {ic: "🩺", bg: "#E3EEFF"}, sport: {ic: "💪", bg: "#DDF5EC"}, beauty: {ic: "✨", bg: "#FCE7F0"}};
+const gm = (g) => GM[g] || {ic: "💊", bg: "#EEF1F5"};
 function medCard(m) {
-  const times = String(m.times_csv).split(",").map((t) => `<span class="tag">⏰ ${esc(t.trim())}</span>`).join("");
-  return `<div class="card med"><div class="t"><b>💊 ${esc(m.name)}</b> <span class="muted">${esc(m.dose)}</span><br>
-  <span class="muted">${esc(m.drug_category)}</span><br>${times}<span class="tag">🍽 ${esc(m.meal_relation || "—")}</span></div>
-  <button class="btn bad small" onclick="delMed('${esc(m.client_id)}')" aria-label="حذف ${esc(m.name)}">حذف</button></div>`;
+  const g = gm(m.group), times = timesOf(m).map((t) => `<span class="tag">⏰ ${esc(t)}</span>`).join("");
+  return `<div class="card med"><div class="mi" style="background:${g.bg}">${g.ic}</div><div class="t"><b>${esc(m.name)}</b> <span class="muted">${esc(m.dose)}</span><br><span class="muted">${esc(m.drug_category)}</span>
+  <div class="tags">${times}<span class="tag">🍽 ${esc(m.meal_relation || "—")}</span></div></div>
+  <button class="x" onclick="delMed('${esc(m.client_id)}')" aria-label="حذف ${esc(m.name)}">🗑</button></div>`;
 }
 function viewToday() {
-  const meds = st.meds.filter((m) => !m.deleted), b = barText();
-  return `<div class="bar"><div class="lbl">🔔 نوار اعلان دائمی (روی اندروید در نوار بالای گوشی هم نمایش داده می‌شود)</div>
-  <div class="txt" id="barTxt" style="white-space:pre-line">${esc(b.title + "\n" + b.text)}</div>
-  <div class="row"><button class="btn bar-b" onclick="logDose('taken')">✅ مصرف کردم</button><button class="btn bar-b" onclick="logDose('snooze')">⏳ ۱۰ دقیقه بعد</button><button class="btn bar-b" onclick="logDose('skip')">❌ نخوردم</button></div></div>
-  <h2 style="font-size:16px;margin:16px 2px 8px">داروهای فعال (${faNum(meds.length)})</h2>
-  ${meds.length ? meds.map(medCard).join("") : `<div class="card muted">هنوز دارویی ثبت نشده است. از تب «ثبت دارو» اولین مورد را اضافه کنید.</div>`}
+  const all = st.meds.filter((m) => !m.deleted), f = ui.filter, meds = f ? all.filter((m) => m.group === f) : all;
+  const now = tehran(), h = heroState(), pct = adherence(st.logs);
+  const takenToday = st.logs.filter((l) => l.persian_date === now.date && kind(l.status) === "taken").length;
+  const hero = h ? `<div class="bar hero"><div class="hl">داروی بعدی</div>
+    <div class="hname">💊 ${esc(h.d.med.name)}</div><div class="hsub">${esc(h.d.med.dose)} · 🍽 ${esc(h.d.med.meal_relation || "—")}</div>
+    <div class="hcount" id="hcount">${h.big}</div><div class="hlbl" id="hlbl">${h.lbl}</div>
+    <div class="meter"><i id="hmeter" style="width:${h.pct}%"></i></div>
+    <div class="grid3"><button class="btn bar-b" onclick="logDose('taken')"><b>✅</b><span>مصرف کردم</span></button><button class="btn bar-b" onclick="logDose('snooze')"><b>⏳</b><span>۱۰ دقیقه بعد</span></button><button class="btn bar-b" onclick="logDose('skip')"><b>❌</b><span>نخوردم</span></button></div></div>`
+    : `<div class="bar hero"><div class="hname">💊 هنوز دارویی ثبت نشده</div><div class="hsub">از تب «ثبت دارو» اولین دارو را اضافه کنید</div></div>`;
+  const tiles = [["", "🗂", "همه"]].concat(Object.entries(GROUPS).map(([k, v]) => [k, gm(k).ic, v])).map(([k, ic, t]) =>
+    `<button class="tile ${(f || "") === k ? "on" : ""}" style="--tc:${k ? gm(k).bg : "#E9EEF4"}" onclick="ui.filter=${k ? `'${k}'` : "null"};render()"><span>${ic}</span>${t}</button>`).join("");
+  return `<div class="hello"><b>سلام ${esc((st.user.display_name || st.user.username).slice(0, 14))} 👋</b><span>${esc(now.weekday)} ${faNum(now.date)}</span></div>
+  ${hero}
+  <div class="stats"><div class="stat s1"><b>${faNum(pct)}٪</b><span>پایبندی</span></div><div class="stat s2"><b>${faNum(all.length)}</b><span>داروی فعال</span></div><div class="stat s3"><b>${faNum(takenToday)}</b><span>مصرف امروز</span></div></div>
+  <div class="tiles">${tiles}</div>
+  <h2 style="font-size:16px;margin:4px 2px 8px">داروهای فعال (${faNum(meds.length)})</h2>
+  ${meds.length ? meds.map(medCard).join("") : `<div class="card muted">دارویی در این بخش نیست. از تب «ثبت دارو» اضافه کنید.</div>`}
   <button class="btn sec noprint" style="width:100%" onclick="seedDemo()">⚡ درج داده‌ی نمونه‌ی ۷ روزه (دمو)</button>`;
 }
 
@@ -378,10 +487,21 @@ function viewRecord() {
 }
 
 /* ---------- پروفایل و تنظیمات ---------- */
+const sw = (k, t) => `<label class="sw"><span>${t}</span><input type="checkbox" ${st.settings[k] ? "checked" : ""} onchange="setSet('${k}',this.checked)"><i></i></label>`;
+const numF = (k, t, a, b) => `<div><label>${t}</label><input type="number" inputmode="numeric" min="${a}" max="${b}" value="${st.settings[k]}" onchange="setSet('${k}',this.value)"></div>`;
+function viewSettings() {
+  return `<h3 style="margin:16px 0 4px">🔔 نوتیفیکیشن‌ها (نوار بالای گوشی)</h3>
+  ${sw("notifDate", "📅 تاریخ امروز (شمسی، میلادی، قمری)")}${sw("notifMed", "💊 یادآور دارو با سه دکمه")}${sw("notifNext", "⏱ تایمر و نوار تا داروی بعدی")}
+  <h3 style="margin:16px 0 4px">⏰ زنگ و تکرار</h3>
+  ${sw("sound", "🔊 صدای زنگ")}${sw("vibrate", "📳 ویبره")}
+  <div class="fields3">${numF("leadMin", "از چند دقیقه قبل", 0, 120)}${numF("repeatMin", "هر چند دقیقه", 1, 60)}${numF("repeatCount", "چند بار تکرار", 0, 10)}</div>
+  <p class="muted" id="setHint">${hintText()}</p>`;
+}
 function viewSheet() {
   const u = st.user || {};
   return `<div class="overlay" onclick="if(event.target===this){ui.sheet=false;render()}"><div class="sheet"><h2 style="margin-top:0">${esc(u.display_name || u.username)}</h2>
   <div class="muted">${esc(PROFILES[u.profile] || "")} ${st.token ? "• متصل به سرور" : "• حالت آفلاین"}${st.lastSync ? " • آخرین همگام‌سازی: " + esc(tehran(new Date(st.lastSync)).hm) : ""}</div>
+  ${viewSettings()}
   <label for="srv">آدرس سرور</label><input id="srv" dir="ltr" style="text-align:left" value="${esc(st.server)}" placeholder="خالی = همین سرور">
   <div class="row" style="margin-top:10px"><button class="btn" onclick="st.server=$('#srv').value.trim();save();testServer()">ذخیره و آزمایش اتصال</button><button class="btn sec" onclick="sync(false)">همگام‌سازی اکنون</button></div>
   <div class="row" style="margin-top:10px"><button class="btn sec" onclick="logout()">خروج</button>${st.token ? `<button class="btn bad" onclick="deleteMe()">حذف همه‌ی اطلاعات من</button>` : ""}</div>
@@ -394,11 +514,11 @@ async function deleteMe() { if (!confirm("همه‌ی اطلاعات شما از
 function render() {
   const root = $("#root");
   if (!st.user) { root.innerHTML = viewAuth(); return; }
-  const tabs = [["today", "🏠", "امروز"], ["add", "➕", "ثبت دارو"], ["record", "📋", "پرونده"]];
+  const tabs = [["today", "🏠", "امروز"], ["add", "+", "ثبت دارو"], ["record", "📋", "پرونده"]];
   root.innerHTML = `<header class="top">${LOGO}<div><h1>دارویار</h1><small>دارویار، یادآور داروی تو…</small></div>
-   <button class="chip" onclick="ui.sheet=true;render()">👤 ${esc((st.user.display_name || st.user.username).slice(0, 12))}</button></header>
+   <button class="chip" onclick="ui.sheet=true;render()" aria-label="تنظیمات">⚙️ تنظیمات</button></header>
    <main>${ui.tab === "today" ? viewToday() : ui.tab === "add" ? viewAdd() : viewRecord()}<p class="disc">دارویار فقط یادآور است و توصیه‌ی پزشکی نمی‌دهد. برای هر سؤال درباره‌ی دارو با پزشک یا داروساز صحبت کنید.</p></main>
-   <nav class="tabs">${tabs.map((t) => `<button class="${ui.tab === t[0] ? "on" : ""}" onclick="ui.tab='${t[0]}';window.scrollTo(0,0);render()"><span class="ic">${t[1]}</span>${t[2]}</button>`).join("")}</nav>${ui.sheet ? viewSheet() : ""}`;
+   <nav class="tabs">${tabs.map((t) => `<button class="${ui.tab === t[0] ? "on" : ""}${t[0] === "add" ? " mid" : ""}" onclick="ui.tab='${t[0]}';window.scrollTo(0,0);render()"><span class="ic">${t[1]}</span>${t[2]}</button>`).join("")}</nav>${ui.sheet ? viewSheet() : ""}`;
   notify();
 }
 
@@ -408,6 +528,15 @@ setInterval(notify, 30000);
 setInterval(() => { if (st.token && !ui.sheet && ui.tab !== "add") sync(true); }, 60000);
 document.addEventListener("visibilitychange", () => { if (!document.hidden) { sync(true); notify(); } });
 if (st.token) sync(true);
+setTimeout(() => { if (window.AndroidBridge) window.nativeResume(); else pushSchedule(); }, 700);
+(function splash() {
+  const el = document.getElementById("splash"); if (!el) return;
+  el.querySelector(".sp-logo").insertAdjacentHTML("beforeend", LOGO);
+  const txt = "دارویار، یادآور داروی تو…", tag = document.getElementById("spTag"); let i = 0;
+  const tick = () => { tag.textContent = txt.slice(0, ++i); if (i < txt.length) setTimeout(tick, 75); };
+  setTimeout(tick, 900);
+  setTimeout(() => { el.classList.add("hide"); setTimeout(() => el.remove(), 700); }, 3400);
+})();
 </script>
 </body>
 </html>
