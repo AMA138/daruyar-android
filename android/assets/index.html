@@ -151,8 +151,32 @@ input:focus,select:focus,textarea:focus{border-color:var(--teal);box-shadow:0 0 
 @keyframes spWave{0%{transform:scale(1);opacity:.9}100%{transform:scale(1.9);opacity:0}}
 @keyframes spUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion:reduce){#splash *{animation-duration:.01ms!important;animation-iteration-count:1!important}}
+.cfm{position:fixed;inset:0;z-index:120;background:rgba(10,25,40,.55);display:flex;align-items:center;justify-content:center;padding:24px}
+.cfmbox{background:#fff;border-radius:22px;padding:20px;max-width:380px;width:100%;box-shadow:0 20px 50px rgba(0,0,0,.4)}
+.cfmbox h3{margin:0 0 8px}.cfmbox p{margin:0 0 16px;color:#475569;line-height:1.9}
+.cfmbox .row{display:grid;grid-template-columns:1fr 1fr;gap:8px}.cfmbox .btn{width:100%}
 @media print{header.top,.tabs,.noprint{display:none!important}body{background:#fff}.card{box-shadow:none;border:1px solid #ccc}}
 @media (prefers-reduced-motion:no-preference){.toast{animation:pop .2s ease-out}@keyframes pop{from{opacity:0;transform:translate(-50%,8px)}}}
+/* ---------- آموزش درون‌برنامه ---------- */
+.hbtns{margin-inline-start:auto;display:flex;gap:6px}.hbtns .chip{margin-inline-start:0}
+.guide{position:fixed;inset:0;z-index:40;background:var(--bg);display:flex;flex-direction:column;max-width:560px;margin:0 auto}
+.ghead{background:var(--navy);color:#fff;padding:calc(10px + env(safe-area-inset-top,0px)) 14px 10px;display:flex;align-items:center;gap:8px}
+.ghead b{flex:1;font-size:16px}
+.ghead button{background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.32);color:#fff;border-radius:20px;padding:4px 12px;font-size:13px;cursor:pointer;min-height:36px}
+.gprog{height:4px;background:#DCE4EC}.gprog i{display:block;height:100%;background:var(--teal);transition:width .25s}
+.gbody{flex:1;overflow:auto;padding:16px}
+.gic{font-size:44px;line-height:1.1}
+.gbody h2{margin:6px 0 4px;font-size:20px}
+.gbody ol{padding-inline-start:22px;margin:8px 0}.gbody li{margin:7px 0}
+.gtip,.gwarn{border-radius:12px;padding:10px 12px;margin:12px 0}
+.gtip{background:#E4F4F1;border-inline-start:4px solid var(--teal)}
+.gwarn{background:#FFF4E0;border-inline-start:4px solid var(--warn)}
+.gfoot{display:flex;align-items:center;gap:8px;padding:10px 14px calc(10px + env(safe-area-inset-bottom,0px));background:#fff;border-top:1px solid var(--line)}
+.gdots{flex:1;display:flex;justify-content:center;gap:5px;flex-wrap:wrap}
+.gdots i{width:8px;height:8px;border-radius:50%;background:#C9D5E0}.gdots i.on{background:var(--teal);width:20px;border-radius:6px}
+.glist button{display:flex;gap:10px;align-items:center;width:100%;text-align:start;background:#fff;border:1px solid var(--line);border-radius:14px;padding:10px 12px;margin-bottom:8px;cursor:pointer;min-height:48px}
+.glist button.on{border-color:var(--teal);background:#E4F4F1}
+@media print{.guide{display:none!important}}
 </style>
 </head>
 <body>
@@ -175,6 +199,7 @@ const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":
 const uid = () => "c" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 const faNum = (n) => String(n).replace(/\d/g, (d) => "۰۱۲۳۴۵۶۷۸۹"[d]);
 
+const MEAL_NOTE = "ساعت بیداری، ناهار و شام فقط برای پیشنهاد ساعت یادآور استفاده می‌شود؛ ساعت نهایی مصرف دارو را طبق نسخه‌ی پزشک یا برچسب دارو تنظیم کنید.";
 const DEF_SET = {notifDate: true, notifMed: true, notifNext: true, leadMin: 10, repeatMin: 5, repeatCount: 2, sound: true, vibrate: true};
 let st = load();
 let ui = {tab: "today", group: null, form: null, preview: [], authMode: "login", err: "", link: null, sheet: false, busy: false};
@@ -212,6 +237,12 @@ async function api(path, method = "GET", body) {
 }
 async function sync(silent) {
   if (!st.token || base() === null) return;
+  if (st.profileDirty && st.user) {
+    try {
+      const pj = await api("/api/profile", "POST", {display_name: st.user.display_name, profile: st.user.profile, lunch_time: st.user.lunch_time || "", dinner_time: st.user.dinner_time || "", wake_time: st.user.wake_time || ""});
+      st.user = pj.user; st.profileDirty = false;
+    } catch (e) { if (e.status === 400) st.profileDirty = false; }
+  }
   try {
     const j = await api("/api/sync", "POST", {meds: st.meds, logs: st.logs});
     st.meds = j.meds; st.logs = j.logs; st.user = j.user; st.lastSync = Date.now(); save();
@@ -362,17 +393,38 @@ async function doAuth() {
   const u = $("#au").value.trim(), p = $("#ap").value, mode = ui.authMode;
   const sv = $("#asrv"); if (sv) { st.server = sv.value.trim(); save(); }
   if (u.length < 3 || p.length < 6) { ui.err = "نام کاربری حداقل ۳ و رمز عبور حداقل ۶ نویسه باشد."; return render(); }
+  const guestMeals = st.guest && st.user ? {wake_time: st.user.wake_time || "", lunch_time: st.user.lunch_time || "", dinner_time: st.user.dinner_time || ""} : null;
   try {
     const body = {username: u, password: p};
     if (mode === "register") { body.profile = $("#apr").value; body.display_name = ($("#adn").value || u); }
     const j = await api(mode === "register" ? "/api/register" : "/api/login", "POST", body);
     st.token = j.token; st.user = j.user; st.guest = false; ui.err = "";
-    if (mode === "register") ui.group = PROFILE_GROUP[j.user.profile];
+    if (mode === "register") {
+      ui.group = PROFILE_GROUP[j.user.profile];
+      if (guestMeals && (guestMeals.wake_time || guestMeals.lunch_time || guestMeals.dinner_time)) { st.user = Object.assign({}, st.user, guestMeals); st.profileDirty = true; }
+    }
     save(); render(); sync(true);
   } catch (e) { ui.err = e.offline ? "اتصال به سرور برقرار نشد. آدرس سرور را بررسی کنید یا «ادامه بدون سرور» را بزنید." : e.message; render(); }
 }
 function guest() { st.guest = true; st.user = {username: "مهمان", profile: "general", display_name: "مهمان"}; save(); render(); }
 function logout() { st.token = null; st.user = null; st.guest = false; st.meds = []; st.logs = []; ui.sheet = false; save(); render(); }
+/* پنجره‌ی تأیید داخل صفحه؛ تأیید بومی مرورگر در WebView اندروید بدون WebChromeClient کار نمی‌کند */
+function askConfirm(title, msg, okLabel, fn) {
+  const o = document.createElement("div"); o.className = "cfm"; o.setAttribute("role", "alertdialog");
+  o.innerHTML = `<div class="cfmbox"><h3>${esc(title)}</h3><p>${esc(msg)}</p><div class="row"><button class="btn bad" id="cfmOk">${esc(okLabel)}</button><button class="btn sec" id="cfmNo">انصراف</button></div></div>`;
+  document.body.appendChild(o);
+  const close = () => o.remove();
+  o.querySelector("#cfmNo").onclick = close;
+  o.onclick = (e) => { if (e.target === o) close(); };
+  o.querySelector("#cfmOk").onclick = () => { close(); fn(); };
+}
+function askLogout() {
+  const offline = !st.token;
+  askConfirm("خروج از برنامه",
+    offline ? "اطلاعات ذخیره‌شده روی این گوشی (داروها و سوابق مصرف) برای همیشه پاک می‌شود و قابل بازگرداندن نیست."
+            : "از حساب خود خارج می‌شوید. اطلاعات شما روی سرور می‌ماند و با ورود دوباره برمی‌گردد.",
+    "بله، خارج شو", logout);
+}
 
 function viewAuth() {
   const reg = ui.authMode === "register", b = base();
@@ -386,7 +438,8 @@ function viewAuth() {
    <label for="asrv">آدرس سرور (مثال: http://192.168.1.20:8765)</label><input id="asrv" dir="ltr" style="text-align:left" value="${esc(st.server)}" placeholder="${location.protocol.startsWith("http") ? "خالی = همین سرور" : "http://..."}"></details>
   <div class="err" role="alert">${esc(ui.err)}</div>
   <button class="btn" style="width:100%" onclick="doAuth()">${reg ? "ساخت حساب" : "ورود"}</button>
-  <button class="btn sec" style="width:100%;margin-top:8px" onclick="guest()">ادامه بدون سرور (حالت آفلاین)</button></div>
+  <button class="btn sec" style="width:100%;margin-top:8px" onclick="guest()">ادامه بدون سرور (حالت آفلاین)</button>
+  <button class="btn sec" style="width:100%;margin-top:8px" onclick="openGuide(0)">📖 آموزش استفاده از دارویار</button></div>
   <p class="disc" style="color:#9fd8cd">دارویار فقط یادآور است و توصیه‌ی پزشکی نمی‌دهد. برای هر سؤال درباره‌ی دارو با پزشک یا داروساز صحبت کنید.</p></div>`;
 }
 
@@ -437,7 +490,8 @@ function viewAdd() {
    <p class="muted" style="margin:4px 0 0">دوز و شرط پیش‌فرض فقط برای تسریع ثبت است؛ مقدار نهایی را طبق نسخه‌ی پزشک یا برچسب دارو وارد کنید.</p>
    <label for="fm">شرایط مصرف</label><select id="fm" onchange="ui.form.meal=this.value">${MEALS.map((m) => `<option ${m === f.meal ? "selected" : ""}>${esc(m)}</option>`).join("")}</select>
    <label for="ff">دفعات مصرف در روز</label><select id="ff" onchange="setFreq(+this.value)">${[1, 2, 3, 4].map((n) => `<option value="${n}" ${n === f.freq ? "selected" : ""}>${faNum(n)} بار</option>`).join("")}</select>
-   <div class="row" style="margin-top:8px">${f.times.map((t, i) => `<input type="time" value="${esc(t)}" style="width:110px" aria-label="ساعت ${i + 1}" onchange="ui.form.times[${i}]=this.value">`).join("")}</div>
+   <div class="row" style="margin-top:8px">${f.times.map((t, i) => `<input type="time" value="${esc(t)}" style="width:110px" aria-label="ساعت ${i + 1}" onfocus="ui.form.slot=${i}" onchange="ui.form.times[${i}]=this.value">`).join("")}</div>
+   ${mealHint()}
    <label for="fdays">مدت مصرف (روز)</label><input id="fdays" type="number" min="1" max="365" value="${f.days}" oninput="ui.form.days=+this.value">
    <button class="btn" style="width:100%;margin-top:12px" onclick="submitMed()">افزودن به برنامه</button></div>
   <div class="card"><h2>دریافت خودکار نسخه‌ی الکترونیک</h2>
@@ -449,6 +503,17 @@ function viewAdd() {
   ${prev}
   <div class="card"><h2>اتصال به بات بله</h2><p class="muted" style="margin-top:0">نسخه را در بله به بات دارویار فوروارد کنید تا خودکار در برنامه ثبت شود.</p>
    <button class="btn" onclick="getLink()">دریافت کد اتصال</button></div>${link}`;
+}
+function mealHint() {
+  const u = st.user || {};
+  if (!u.wake_time && !u.lunch_time && !u.dinner_time) return `<p class="muted" style="margin:6px 0 0">می‌توانید در تب «پروفایل» ساعت تقریبی بیداری، ناهار و شام را ثبت کنید تا اینجا برای انتخاب ساعت پیشنهاد شود.</p>`;
+  const b = (ic, t, v) => v ? `<button type="button" class="btn sec small" onclick="useMeal('${esc(v)}')">${ic} ${t} من (${faNum(v)})</button>` : "";
+  return `<div class="row" style="margin-top:8px">${b("☀️", "بیداری", u.wake_time)}${b("🍽", "ناهار", u.lunch_time)}${b("🌙", "شام", u.dinner_time)}</div>
+   <p class="muted" style="margin:4px 0 0">ابتدا کادر ساعت موردنظر را لمس کنید، سپس یکی از دکمه‌ها را بزنید. ساعت نهایی را طبق نسخه‌ی پزشک یا برچسب دارو تنظیم کنید.</p>`;
+}
+function useMeal(t) {
+  const f = ui.form; if (!f) return;
+  f.times[Math.min(f.slot || 0, f.times.length - 1)] = t; render();
 }
 function pickDrug(name) {
   const d = DRUGS.find((x) => x.name_fa === name); if (!d) { ui.form.drug = ""; return; }
@@ -486,6 +551,141 @@ function viewRecord() {
   <button class="btn sec noprint" style="margin-top:10px" onclick="window.print()">🖨 چاپ گزارش</button></div>`;
 }
 
+/* ---------- آموزش درون‌برنامه (همه‌ی بخش‌ها؛ بدون نیاز به اینترنت) ---------- */
+const TOUR = [
+  {ic: "👋", t: "خوش آمدید به دارویار",
+   intro: "دارویار یک <b>یادآور مصرف دارو</b> است. این آموزش در چند قدم کوتاه همه‌ی بخش‌های برنامه را نشان می‌دهد. هر وقت خواستید از دکمه‌ی «❓ راهنما» بالای صفحه دوباره بازش کنید.",
+   steps: ["<b>کارهایی که دارویار می‌کند:</b> ساعت مصرف را با زنگ و نوتیفیکیشن یادآوری می‌کند، ثبت می‌کند که دارو را خوردید یا نه، و گزارش پایبندی برای پزشک یا مربی می‌سازد.",
+           "<b>کارهایی که دارویار نمی‌کند:</b> تشخیص بیماری، تجویز دارو و توصیه‌ی پزشکی. دوز و ساعت دارو را فقط شما (طبق نسخه‌ی پزشک یا برچسب دارو) تعیین می‌کنید."],
+   tip: "برای هر سؤال درباره‌ی دارو با پزشک یا داروساز صحبت کنید."},
+  {ic: "🔐", t: "حساب کاربری و حالت آفلاین",
+   intro: "برای شروع دو راه دارید:",
+   steps: ["<b>ثبت‌نام:</b> نام کاربری (۳ تا ۳۲ نویسه) و رمز عبور (حداقل ۶ نویسه) بسازید. نام نمایشی اختیاری است و نوع پروفایل را هم همین‌جا انتخاب می‌کنید (بعداً قابل تغییر است).",
+           "<b>ورود:</b> با همان نام کاربری و رمز، روی هر گوشی که خواستید.",
+           "<b>ادامه بدون سرور (حالت آفلاین):</b> بدون حساب هم می‌توانید دارو ثبت کنید و زنگ بشنوید؛ اطلاعات فقط روی همین گوشی می‌ماند.",
+           "<b>آدرس سرور:</b> برای همگام‌سازی باید آدرس سرور را وارد کنید (مثال: <span dir=\"ltr\">http://192.168.1.20:8765</span>). از «تنظیم آدرس سرور» در صفحه‌ی ورود یا از ⚙️ تنظیمات ← «ذخیره و آزمایش اتصال» انجام می‌شود.",
+           "<b>همگام‌سازی:</b> وقتی وارد شده‌اید، خودکار (حدود هر یک دقیقه) انجام می‌شود؛ دکمه‌ی «همگام‌سازی اکنون» در ⚙️ تنظیمات هم هست."],
+   tip: "ثبت‌نام، همگام‌سازی، استخراج خودکار نسخه و اتصال به بات بله به سرور نیاز دارند؛ بقیه‌ی امکانات بدون سرور کار می‌کنند."},
+  {ic: "🏠", t: "تب «امروز»", go: ["today", "رفتن به تب امروز"],
+   intro: "صفحه‌ی اصلی برنامه؛ هر روز اول اینجا سر بزنید.",
+   steps: ["بالای صفحه سلام، روز هفته و تاریخ شمسی (به وقت تهران) را می‌بینید.",
+           "<b>کارت «داروی بعدی»:</b> نام دارو، دوز، شرط مصرف، شمارش معکوس تا موعد و یک نوار پیشرفت.",
+           "<b>سه دکمه‌ی زیر کارت</b> برای نزدیک‌ترین دارو: ✅ «مصرف کردم»، ⏳ «۱۰ دقیقه بعد» (تعویق ثبت می‌شود)، ❌ «نخوردم». هر بار که می‌زنید، در پرونده ثبت می‌شود.",
+           "<b>سه آمار سریع:</b> درصد پایبندی، تعداد داروی فعال و تعداد مصرف امروز.",
+           "<b>کاشی‌های دسته‌ها</b> (همه، مزمن، ورزش و تندرستی، آرایشی و بهداشتی) فهرست داروها را فیلتر می‌کنند.",
+           "در هر کارت دارو با 🗑 می‌توانید آن دارو را حذف کنید."],
+   warn: "دکمه‌ی «⚡ درج داده‌ی نمونه‌ی ۷ روزه (دمو)» فقط برای آشنایی است و داده‌ی نمونه در پرونده و گزارش شما هم می‌آید؛ روی اطلاعات واقعی خود از آن استفاده نکنید."},
+  {ic: "➕", t: "ثبت دارو از فهرست", go: ["add", "رفتن به تب ثبت دارو"],
+   intro: "از تب «ثبت دارو» بخش اول:",
+   steps: ["یکی از دسته‌ها را بزنید: داروهای بیماری‌های مزمن، ورزش و تندرستی، یا آرایشی و بهداشتی (پوست و مو).",
+           "دارو یا مکمل را از فهرست انتخاب کنید؛ دوز و شرط مصرف به‌صورت پیش‌فرض پر می‌شود.",
+           "<b>دوز را با نسخه‌ی پزشک یا برچسب دارو یکی کنید</b> و اگر فرق داشت، خودتان اصلاح کنید.",
+           "«شرایط مصرف» را انتخاب کنید (مثلاً ناشتا، همراه با غذا، قبل از خواب).",
+           "«دفعات مصرف در روز» (۱ تا ۴) ساعت‌های پیش‌فرض را می‌گذارد؛ هر ساعت را می‌توانید دستی عوض کنید.",
+           "اگر در پروفایل ساعت بیداری، ناهار یا شام را ثبت کرده باشید، زیر ساعت‌ها دکمه‌های پیشنهاد ساعت (☀️ 🍽 🌙) می‌آید: ابتدا کادر ساعت را لمس کنید، بعد دکمه را بزنید.",
+           "«مدت مصرف (روز)» را بنویسید و «افزودن به برنامه» را بزنید."],
+   warn: "فهرست دارو و دوزهای پیش‌فرض فقط برای سریع‌تر شدن ثبت است و هنوز توسط داروساز بازبینی نشده؛ مقدار نهایی را همیشه طبق نسخه‌ی پزشک وارد کنید."},
+  {ic: "📄", t: "ثبت خودکار از روی نسخه‌ی الکترونیک", go: ["add", "رفتن به تب ثبت دارو"],
+   intro: "اگر متن نسخه یا پیامک الکترونیک دارید، لازم نیست دارو به دارو وارد کنید:",
+   steps: ["در تب «ثبت دارو» به کادر «دریافت خودکار نسخه‌ی الکترونیک» بروید.",
+           "متن نسخه را بچسبانید (<b>هر خط یک دارو</b>)، مثلاً: <span dir=\"rtl\">متفورمین ۵۰۰ میلی‌گرم روزی ۲ بار بعد از غذا</span>. یا یک فایل متنی (.txt) انتخاب کنید.",
+           "«استخراج داروها» را بزنید.",
+           "نتیجه را <b>قبل از ثبت بررسی کنید</b>؛ سپس «افزودن همه» یا «لغو» را بزنید."],
+   tip: "داروی ناشناخته در بانک با عبارت «(ناشناخته در بانک)» نشان داده می‌شود؛ دوز و ساعت آن را حتماً چک کنید. این قابلیت به اتصال با سرور نیاز دارد و فعلاً عکس نسخه (OCR) پشتیبانی نمی‌شود."},
+  {ic: "💬", t: "اتصال به بات بله", go: ["add", "رفتن به تب ثبت دارو"],
+   intro: "می‌توانید نسخه را در پیام‌رسان بله برای بات دارویار بفرستید تا خودکار ثبت شود.",
+   steps: ["در تب «ثبت دارو» پایین صفحه «دریافت کد اتصال» را بزنید (نیاز به حساب روی سرور).",
+           "یک کد ۶ نویسه‌ای نشان داده می‌شود. در بله به بات دارویار پیام <span dir=\"ltr\">/link CODE</span> را بفرستید (به‌جای CODE همان کد).",
+           "بعد از اتصال، متن نسخه را به بات بفرستید؛ داروها در همگام‌سازی بعدی (حدود یک دقیقه) در برنامه ظاهر می‌شوند.",
+           "دستورهای بات: <span dir=\"ltr\">/meds</span> فهرست داروها، <span dir=\"ltr\">/delete_me</span> حذف همه‌ی اطلاعات، <span dir=\"ltr\">/help</span> راهنما."],
+   warn: "این بخش هنوز با بات واقعی بله آزمایش نشده است؛ ممکن است در عمل نیاز به تنظیمات بیشتری داشته باشد."},
+  {ic: "📋", t: "تب «پرونده» و گزارش برای پزشک", go: ["record", "رفتن به تب پرونده"],
+   intro: "همه‌ی ثبت‌های شما اینجا جمع می‌شود.",
+   steps: ["<b>شاخص پایبندی:</b> درصد نوبت‌هایی که «مصرف کردم» ثبت شده از کل نوبت‌های ثبت‌شده؛ هم کل و هم به تفکیک دسته. تعویق و «نخوردم» جزو مصرف‌شده حساب نمی‌شوند.",
+           "<b>جدول مصرف دارو (MAR):</b> برای هر ثبت، دارو و دوز، دسته، شرط مصرف، روز و تاریخ شمسی، ساعت مقرر، ساعت ثبت و وضعیت.",
+           "<b>🖨 چاپ گزارش</b> جدول را برای نشان‌دادن به پزشک یا مربی آماده‌ی چاپ می‌کند."]},
+  {ic: "👤", t: "تب «پروفایل»", go: ["profile", "رفتن به تب پروفایل"],
+   intro: "اطلاعات شخصی و ساعت‌های تقریبی روز شما:",
+   steps: ["<b>نام نمایشی و نوع پروفایل</b> (عمومی، ورزشکار، مراقبت/بهداشتی/زیبایی) را می‌توانید هر وقت تغییر دهید. نوع پروفایل تعیین می‌کند هنگام ثبت دارو، اول کدام دسته نشان داده شود.",
+           "<b>ساعت تقریبی بیداری، ناهار و شام</b> را ثبت کنید (هر سه اختیاری).",
+           "<b>چرا؟</b> بعضی داروها شرط «ناشتا»، «همراه با غذا» یا «بعد از غذا» دارند. با این ساعت‌ها، موقع ثبت دارو ساعت یادآور را نزدیک برنامه‌ی واقعی خودتان پیشنهاد می‌دهیم.",
+           "«ذخیره‌ی پروفایل» را بزنید."],
+   tip: "این ساعت‌ها فقط پیشنهاد هستند و هیچ ساعتی خودکار تغییر نمی‌کند. ساعت نهایی مصرف دارو را طبق نسخه‌ی پزشک یا برچسب دارو تنظیم کنید."},
+  {ic: "🔔", t: "نوتیفیکیشن و زنگ یادآور (نسخه‌ی اندروید)",
+   intro: "در نسخه‌ی اندروید سه نوتیفیکیشن در نوار بالای گوشی دارید:",
+   steps: ["<b>تاریخ امروز:</b> شمسی، میلادی و قمری.",
+           "<b>داروی بعدی:</b> نام دارو، ساعت، تایمر شمارش معکوس و نوار پیشرفت.",
+           "<b>یادآور دارو:</b> هنگام زنگ‌خوردن می‌آید و سه دکمه‌ی «مصرف کردم»، «۱۰ دقیقه بعد» و «نخوردم» دارد. نتیجه‌ی دکمه‌ها دفعه‌ی بعد که برنامه را باز کنید در پرونده ثبت می‌شود.",
+           "در <b>⚙️ تنظیمات</b> هر نوتیفیکیشن را روشن/خاموش کنید، صدا و ویبره را تنظیم کنید و تعیین کنید «از چند دقیقه قبل»، «هر چند دقیقه» و «چند بار» زنگ تکرار شود."],
+   tip: "اگر نوتیفیکیشنی نمی‌آید، در تنظیمات گوشی مطمئن شوید اجازه‌ی اعلان برای دارویار روشن است (در اندروید ۱۳ به بعد هنگام اولین اجرا پرسیده می‌شود)."},
+  {ic: "🛡️", t: "حریم خصوصی و حذف اطلاعات",
+   intro: "اطلاعات شما در اختیار خودتان است:",
+   steps: ["داروها و سابقه‌ی مصرف روی گوشی ذخیره می‌شود؛ فقط اگر وارد حساب شده باشید با سرور همگام می‌شود.",
+           "برای استفاده از دارویار لازم نیست نام واقعی یا کد ملی وارد کنید.",
+           "<b>«حذف همه‌ی اطلاعات من»</b> (در ⚙️ تنظیمات، وقتی به حساب سرور وصل هستید) حساب و همه‌ی داده‌ها را از سرور و گوشی پاک می‌کند.",
+           "<b>«خروج»</b> اطلاعات ذخیره‌شده روی گوشی را پاک می‌کند."],
+   warn: "اگر بدون سرور (حالت آفلاین) کار می‌کنید و «خروج» را بزنید، اطلاعات گوشی برنمی‌گردد."},
+  {ic: "🚀", t: "آماده‌اید! شروع سریع",
+   intro: "چهار قدم برای شروع درست:",
+   steps: ["در تب «پروفایل» ساعت تقریبی بیداری، ناهار و شام را ثبت کنید.",
+           "در تب «ثبت دارو» اولین داروی خود را اضافه کنید.",
+           "اجازه‌ی نوتیفیکیشن را (در صورت پرسش) بدهید.",
+           "هر بار موعد دارو رسید، یکی از سه دکمه (مصرف کردم / ۱۰ دقیقه بعد / نخوردم) را بزنید تا پرونده‌ی شما کامل شود."],
+   tip: "دارویار فقط یادآور است و توصیه‌ی پزشکی نمی‌دهد. هر وقت خواستید، دکمه‌ی «❓ راهنما» بالای صفحه همین آموزش را دوباره باز می‌کند."},
+];
+function openGuide(i) { ui.tour = {i: i || 0, list: false}; render(); }
+function closeTour() { ui.tour = null; if (!st.tourDone) { st.tourDone = true; save(); } render(); }
+function guideGo(tab) { if (st.user) { ui.tab = tab; window.scrollTo(0, 0); } closeTour(); }
+function guideStep(d) { ui.tour.i = Math.max(0, Math.min(TOUR.length - 1, ui.tour.i + d)); render(); }
+function viewGuide() {
+  const g = ui.tour, n = TOUR.length, s = TOUR[g.i], last = g.i === n - 1;
+  const head = `<div class="ghead"><b>📖 آموزش دارویار</b><button onclick="ui.tour.list=!ui.tour.list;render()">${g.list ? "بازگشت" : "☰ فهرست"}</button><button onclick="closeTour()" aria-label="بستن آموزش">✕ بستن</button></div><div class="gprog"><i style="width:${Math.round((g.i + 1) / n * 100)}%"></i></div>`;
+  const body = g.list
+    ? `<div class="gbody glist"><p class="muted" style="margin-top:0">یکی از بخش‌ها را انتخاب کنید:</p>${TOUR.map((x, i) => `<button class="${i === g.i ? "on" : ""}" onclick="ui.tour.i=${i};ui.tour.list=false;render()"><span style="font-size:24px">${x.ic}</span><b>${faNum(i + 1)}. ${x.t}</b></button>`).join("")}</div>`
+    : `<div class="gbody"><div class="gic">${s.ic}</div><h2>${s.t}</h2><p style="margin:0 0 6px">${s.intro}</p>
+       ${s.steps ? `<ol>${s.steps.map((x) => `<li>${x}</li>`).join("")}</ol>` : ""}
+       ${s.tip ? `<div class="gtip">💡 ${s.tip}</div>` : ""}${s.warn ? `<div class="gwarn">⚠️ ${s.warn}</div>` : ""}
+       ${s.go ? `<button class="btn sec" onclick="guideGo('${s.go[0]}')">${s.go[1]}</button>` : ""}</div>`;
+  const foot = `<div class="gfoot"><button class="btn sec" ${g.i === 0 ? "disabled" : ""} onclick="guideStep(-1)">▶ قبلی</button>
+    <div class="gdots" aria-label="مرحله ${faNum(g.i + 1)} از ${faNum(n)}">${TOUR.map((x, i) => `<i class="${i === g.i ? "on" : ""}"></i>`).join("")}</div>
+    <button class="btn" onclick="${last ? "closeTour()" : "guideStep(1)"}">${last ? "شروع کار ✓" : "بعدی ◀"}</button></div>`;
+  return `<div class="guide" role="dialog" aria-label="آموزش دارویار">${head}${body}${foot}</div>`;
+}
+
+/* ---------- تب ۴: پروفایل ---------- */
+function viewProfile() {
+  const u = st.user || {};
+  return `<div class="card"><h2>👤 پروفایل من</h2>
+   <label for="pn">نام نمایشی</label><input id="pn" maxlength="40" value="${esc(u.display_name || "")}">
+   <label for="pt">نوع پروفایل</label><select id="pt">${Object.entries(PROFILES).map(([k, v]) => `<option value="${k}" ${u.profile === k ? "selected" : ""}>${v}</option>`).join("")}</select>
+   <div class="muted" style="margin-top:6px">${esc(u.username || "")} ${st.token ? "• متصل به سرور" : "• حالت آفلاین"}</div></div>
+  <div class="card"><h2>⏰ ساعت‌های تقریبی روز</h2>
+   <p class="muted" style="margin-top:0"><b>چرا ثبت می‌کنیم؟</b> بعضی داروها شرط مصرف مرتبط با غذا (مثل «همراه با غذا» یا «بعد از غذا») یا «ناشتا» دارند. با دانستن ساعت تقریبی بیداری، ناهار و شام شما، هنگام ثبت دارو می‌توانیم ساعت یادآور را به‌جای ساعت پیش‌فرض (مثلاً ۰۸:۰۰ یا ۲۰:۰۰)، نزدیک برنامه‌ی واقعی خودتان پیشنهاد کنیم. این ساعت‌ها فقط پیشنهاد هستند و همیشه می‌توانید تغییرشان دهید.</p>
+   <div class="row"><div style="flex:1"><label for="pw">بیداری (حدودی)</label><input id="pw" type="time" value="${esc(u.wake_time || "")}"></div>
+   <div style="flex:1"><label for="pl">ناهار (حدودی)</label><input id="pl" type="time" value="${esc(u.lunch_time || "")}"></div>
+   <div style="flex:1"><label for="pd">شام (حدودی)</label><input id="pd" type="time" value="${esc(u.dinner_time || "")}"></div></div>
+   <p class="muted">خالی‌گذاشتن هر کدام مجاز است. ${esc(MEAL_NOTE)}</p>
+   <button class="btn" style="width:100%" onclick="saveProfile()">ذخیره‌ی پروفایل</button></div>
+  <div class="card"><h2>📖 آموزش استفاده</h2><p class="muted" style="margin-top:0">آموزش قدم‌به‌قدم همه‌ی بخش‌های دارویار؛ هر وقت لازم شد دوباره ببینید.</p>
+   <button class="btn sec" style="width:100%" onclick="openGuide(0)">دیدن آموزش</button></div>`;
+}
+async function saveProfile() {
+  const f = {display_name: $("#pn").value.trim(), profile: $("#pt").value, wake_time: $("#pw").value || "", lunch_time: $("#pl").value || "", dinner_time: $("#pd").value || ""};
+  if (!f.display_name) f.display_name = (st.user || {}).username || "";
+  const typeChanged = f.profile !== (st.user || {}).profile;
+  st.user = Object.assign({}, st.user, f);
+  if (typeChanged) { ui.group = PROFILE_GROUP[f.profile]; ui.form = null; }
+  if (st.token) {
+    try { const j = await api("/api/profile", "POST", f); st.user = j.user; st.profileDirty = false; toast("پروفایل ذخیره شد"); }
+    catch (e) {
+      if (e.offline) { st.profileDirty = true; toast("روی گوشی ذخیره شد؛ بعداً با سرور همگام می‌شود"); }
+      else if (e.status === 401) { st.token = null; toast("نشست منقضی شد؛ دوباره وارد شوید"); }
+      else toast(e.message);
+    }
+  } else toast("پروفایل روی گوشی ذخیره شد");
+  save(); render();
+}
+
 /* ---------- پروفایل و تنظیمات ---------- */
 const sw = (k, t) => `<label class="sw"><span>${t}</span><input type="checkbox" ${st.settings[k] ? "checked" : ""} onchange="setSet('${k}',this.checked)"><i></i></label>`;
 const numF = (k, t, a, b) => `<div><label>${t}</label><input type="number" inputmode="numeric" min="${a}" max="${b}" value="${st.settings[k]}" onchange="setSet('${k}',this.value)"></div>`;
@@ -504,21 +704,23 @@ function viewSheet() {
   ${viewSettings()}
   <label for="srv">آدرس سرور</label><input id="srv" dir="ltr" style="text-align:left" value="${esc(st.server)}" placeholder="خالی = همین سرور">
   <div class="row" style="margin-top:10px"><button class="btn" onclick="st.server=$('#srv').value.trim();save();testServer()">ذخیره و آزمایش اتصال</button><button class="btn sec" onclick="sync(false)">همگام‌سازی اکنون</button></div>
-  <div class="row" style="margin-top:10px"><button class="btn sec" onclick="logout()">خروج</button>${st.token ? `<button class="btn bad" onclick="deleteMe()">حذف همه‌ی اطلاعات من</button>` : ""}</div>
+  <div class="row" style="margin-top:10px"><button class="btn sec" onclick="askLogout()">خروج</button>${st.token ? `<button class="btn bad" onclick="deleteMe()">حذف همه‌ی اطلاعات من</button>` : ""}</div>
   <p class="disc">دارویار فقط یادآور است و توصیه‌ی پزشکی نمی‌دهد. برای هر سؤال درباره‌ی دارو با پزشک یا داروساز صحبت کنید.</p></div></div>`;
 }
 async function testServer() { try { await api("/api/health"); toast("اتصال به سرور برقرار است ✅"); sync(true); } catch (e) { toast("اتصال برقرار نشد ❌"); } }
-async function deleteMe() { if (!confirm("همه‌ی اطلاعات شما از سرور و گوشی حذف می‌شود. ادامه می‌دهید؟")) return; try { await api("/api/delete_me", "POST"); } catch (e) { toast("حذف از سرور ناموفق بود"); return; } logout(); }
+function deleteMe() { askConfirm("حذف همه‌ی اطلاعات", "همه‌ی اطلاعات شما از سرور و گوشی حذف می‌شود و قابل بازگرداندن نیست. ادامه می‌دهید؟", "بله، حذف شود", doDeleteMe); }
+async function doDeleteMe() { try { await api("/api/delete_me", "POST"); } catch (e) { toast("حذف از سرور ناموفق بود"); return; } logout(); }
 
 /* ---------- رندر ---------- */
 function render() {
   const root = $("#root");
-  if (!st.user) { root.innerHTML = viewAuth(); return; }
-  const tabs = [["today", "🏠", "امروز"], ["add", "+", "ثبت دارو"], ["record", "📋", "پرونده"]];
+  if (!st.user) { root.innerHTML = viewAuth() + (ui.tour ? viewGuide() : ""); return; }
+  if (!st.tourDone && !ui.tourShown) { ui.tourShown = true; ui.tour = {i: 0, list: false}; }
+  const tabs = [["today", "🏠", "امروز"], ["add", "+", "ثبت دارو"], ["record", "📋", "پرونده"], ["profile", "👤", "پروفایل"]];
   root.innerHTML = `<header class="top">${LOGO}<div><h1>دارویار</h1><small>دارویار، یادآور داروی تو…</small></div>
-   <button class="chip" onclick="ui.sheet=true;render()" aria-label="تنظیمات">⚙️ تنظیمات</button></header>
-   <main>${ui.tab === "today" ? viewToday() : ui.tab === "add" ? viewAdd() : viewRecord()}<p class="disc">دارویار فقط یادآور است و توصیه‌ی پزشکی نمی‌دهد. برای هر سؤال درباره‌ی دارو با پزشک یا داروساز صحبت کنید.</p></main>
-   <nav class="tabs">${tabs.map((t) => `<button class="${ui.tab === t[0] ? "on" : ""}${t[0] === "add" ? " mid" : ""}" onclick="ui.tab='${t[0]}';window.scrollTo(0,0);render()"><span class="ic">${t[1]}</span>${t[2]}</button>`).join("")}</nav>${ui.sheet ? viewSheet() : ""}`;
+   <div class="hbtns"><button class="chip" onclick="openGuide(0)" aria-label="راهنما">❓ راهنما</button><button class="chip" onclick="ui.sheet=true;render()" aria-label="تنظیمات">⚙️ تنظیمات</button></div></header>
+   <main>${ui.tab === "today" ? viewToday() : ui.tab === "add" ? viewAdd() : ui.tab === "profile" ? viewProfile() : viewRecord()}<p class="disc">دارویار فقط یادآور است و توصیه‌ی پزشکی نمی‌دهد. برای هر سؤال درباره‌ی دارو با پزشک یا داروساز صحبت کنید.</p></main>
+   <nav class="tabs">${tabs.map((t) => `<button class="${ui.tab === t[0] ? "on" : ""}${t[0] === "add" ? " mid" : ""}" onclick="ui.tab='${t[0]}';window.scrollTo(0,0);render()"><span class="ic">${t[1]}</span>${t[2]}</button>`).join("")}</nav>${ui.sheet ? viewSheet() : ""}${ui.tour ? viewGuide() : ""}`;
   notify();
 }
 

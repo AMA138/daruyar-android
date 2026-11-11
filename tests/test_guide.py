@@ -57,3 +57,10 @@ def test_page_script_is_valid_javascript():
             f.write(scripts[-1])
         r = subprocess.run(["node", "--check", open_path], capture_output=True, text=True)
         assert r.returncode == 0, r.stderr
+
+
+def test_logout_and_delete_use_in_page_confirm():
+    h = _html()
+    assert "function askConfirm" in h and "askLogout()" in h and "doDeleteMe" in h
+    assert 'onclick="logout()"' not in h                      # خروج مستقیم و بدون تأیید نداریم
+    assert not re.search(r"(?<![A-Za-z])confirm\(", h)         # confirm() بومی در WebView کار نمی‌کند

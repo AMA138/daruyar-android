@@ -151,6 +151,10 @@ input:focus,select:focus,textarea:focus{border-color:var(--teal);box-shadow:0 0 
 @keyframes spWave{0%{transform:scale(1);opacity:.9}100%{transform:scale(1.9);opacity:0}}
 @keyframes spUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion:reduce){#splash *{animation-duration:.01ms!important;animation-iteration-count:1!important}}
+.cfm{position:fixed;inset:0;z-index:120;background:rgba(10,25,40,.55);display:flex;align-items:center;justify-content:center;padding:24px}
+.cfmbox{background:#fff;border-radius:22px;padding:20px;max-width:380px;width:100%;box-shadow:0 20px 50px rgba(0,0,0,.4)}
+.cfmbox h3{margin:0 0 8px}.cfmbox p{margin:0 0 16px;color:#475569;line-height:1.9}
+.cfmbox .row{display:grid;grid-template-columns:1fr 1fr;gap:8px}.cfmbox .btn{width:100%}
 @media print{header.top,.tabs,.noprint{display:none!important}body{background:#fff}.card{box-shadow:none;border:1px solid #ccc}}
 @media (prefers-reduced-motion:no-preference){.toast{animation:pop .2s ease-out}@keyframes pop{from{opacity:0;transform:translate(-50%,8px)}}}
 /* ---------- آموزش درون‌برنامه ---------- */
@@ -404,6 +408,23 @@ async function doAuth() {
 }
 function guest() { st.guest = true; st.user = {username: "مهمان", profile: "general", display_name: "مهمان"}; save(); render(); }
 function logout() { st.token = null; st.user = null; st.guest = false; st.meds = []; st.logs = []; ui.sheet = false; save(); render(); }
+/* پنجره‌ی تأیید داخل صفحه؛ تأیید بومی مرورگر در WebView اندروید بدون WebChromeClient کار نمی‌کند */
+function askConfirm(title, msg, okLabel, fn) {
+  const o = document.createElement("div"); o.className = "cfm"; o.setAttribute("role", "alertdialog");
+  o.innerHTML = `<div class="cfmbox"><h3>${esc(title)}</h3><p>${esc(msg)}</p><div class="row"><button class="btn bad" id="cfmOk">${esc(okLabel)}</button><button class="btn sec" id="cfmNo">انصراف</button></div></div>`;
+  document.body.appendChild(o);
+  const close = () => o.remove();
+  o.querySelector("#cfmNo").onclick = close;
+  o.onclick = (e) => { if (e.target === o) close(); };
+  o.querySelector("#cfmOk").onclick = () => { close(); fn(); };
+}
+function askLogout() {
+  const offline = !st.token;
+  askConfirm("خروج از برنامه",
+    offline ? "اطلاعات ذخیره‌شده روی این گوشی (داروها و سوابق مصرف) برای همیشه پاک می‌شود و قابل بازگرداندن نیست."
+            : "از حساب خود خارج می‌شوید. اطلاعات شما روی سرور می‌ماند و با ورود دوباره برمی‌گردد.",
+    "بله، خارج شو", logout);
+}
 
 function viewAuth() {
   const reg = ui.authMode === "register", b = base();
@@ -683,11 +704,12 @@ function viewSheet() {
   ${viewSettings()}
   <label for="srv">آدرس سرور</label><input id="srv" dir="ltr" style="text-align:left" value="${esc(st.server)}" placeholder="خالی = همین سرور">
   <div class="row" style="margin-top:10px"><button class="btn" onclick="st.server=$('#srv').value.trim();save();testServer()">ذخیره و آزمایش اتصال</button><button class="btn sec" onclick="sync(false)">همگام‌سازی اکنون</button></div>
-  <div class="row" style="margin-top:10px"><button class="btn sec" onclick="logout()">خروج</button>${st.token ? `<button class="btn bad" onclick="deleteMe()">حذف همه‌ی اطلاعات من</button>` : ""}</div>
+  <div class="row" style="margin-top:10px"><button class="btn sec" onclick="askLogout()">خروج</button>${st.token ? `<button class="btn bad" onclick="deleteMe()">حذف همه‌ی اطلاعات من</button>` : ""}</div>
   <p class="disc">دارویار فقط یادآور است و توصیه‌ی پزشکی نمی‌دهد. برای هر سؤال درباره‌ی دارو با پزشک یا داروساز صحبت کنید.</p></div></div>`;
 }
 async function testServer() { try { await api("/api/health"); toast("اتصال به سرور برقرار است ✅"); sync(true); } catch (e) { toast("اتصال برقرار نشد ❌"); } }
-async function deleteMe() { if (!confirm("همه‌ی اطلاعات شما از سرور و گوشی حذف می‌شود. ادامه می‌دهید؟")) return; try { await api("/api/delete_me", "POST"); } catch (e) { toast("حذف از سرور ناموفق بود"); return; } logout(); }
+function deleteMe() { askConfirm("حذف همه‌ی اطلاعات", "همه‌ی اطلاعات شما از سرور و گوشی حذف می‌شود و قابل بازگرداندن نیست. ادامه می‌دهید؟", "بله، حذف شود", doDeleteMe); }
+async function doDeleteMe() { try { await api("/api/delete_me", "POST"); } catch (e) { toast("حذف از سرور ناموفق بود"); return; } logout(); }
 
 /* ---------- رندر ---------- */
 function render() {
