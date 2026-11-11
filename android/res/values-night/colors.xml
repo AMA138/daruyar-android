@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- حالت تیره: متن روشن و فیروزه‌ای روشن‌تر برای خوانایی روی زمینه‌ی تیره -->
+<resources>
+    <color name="dy_navy">#153A5B</color>
+    <color name="dy_teal">#008975</color>
+    <color name="dy_accent">#2FD0B0</color>
+    <color name="dy_title">#FFFFFF</color>
+    <color name="dy_sub">#C7D3DF</color>
+    <color name="dy_timer">#3DE0C0</color>
+    <color name="dy_bar_bg">#40FFFFFF</color>
+</resources>

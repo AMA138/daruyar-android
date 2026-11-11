@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:layoutDirection="rtl">
+
+    <TextView
+        android:id="@+id/z_time"
+        android:layout_width="56dp"
+        android:layout_height="46dp"
+        android:background="@drawable/bg_dose"
+        android:gravity="center"
+        android:textColor="#FFFFFF"
+        android:textSize="16sp"
+        android:textStyle="bold" />
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:layout_marginStart="12dp"
+        android:orientation="vertical"
+        android:layoutDirection="rtl">
+
+        <TextView
+            android:id="@+id/z_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="start"
+            android:singleLine="true"
+            android:textAppearance="@android:style/TextAppearance.Material.Notification.Title"
+            android:textColor="@color/dy_title"
+            android:textDirection="rtl" />
+
+        <TextView
+            android:id="@+id/z_sub"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="start"
+            android:maxLines="2"
+            android:textAppearance="@android:style/TextAppearance.Material.Notification"
+            android:textColor="@color/dy_sub"
+            android:textDirection="rtl" />
+    </LinearLayout>
+</LinearLayout>

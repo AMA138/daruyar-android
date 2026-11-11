@@ -19,6 +19,7 @@ python app_ui.py             # سرور + پنجره‌ی موبایلی (روی
 | زمان‌بندی (تهران، تاریخ شمسی بدون jdatetime، `parse_frequency`) | `schedule.py` |
 | بانک ۳۰ دارو/مکمل در ۳ دسته + استخراج از متن نسخه | `data/drugs_seed.csv`, `med_parser.py` |
 | متن‌ها و لیست شرایط مصرف | `messages.py` |
+| آموزش درون‌برنامه‌ای (۱۱ بخش؛ بار اول خودکار، بعداً از «❓ راهنما») | `web/index.html` (ثابت `TOUR`) · تست: `tests/test_guide.py` |
 | رابط (ورود، ۴ تب شامل پروفایل و ساعت تقریبی بیداری/ناهار/شام، حلقه‌ی پایبندی، جدول MAR، پل نوتیفیکیشن) | `web/index.html` |
 | کلاینت بله | `bale_client.py` |
 | اپ اندروید و بیلد | `android/`, `tools/`, `.github/workflows/build_apk.yml` |

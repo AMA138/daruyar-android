@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- پالت یک‌دست نوتیفیکیشن‌های دارویار (حالت روشن). حالت تیره در values-night است. -->
+<resources>
+    <color name="dy_navy">#153A5B</color>
+    <color name="dy_teal">#008975</color>
+    <color name="dy_accent">#00A68C</color>
+    <color name="dy_title">#14263A</color>
+    <color name="dy_sub">#4A5B6B</color>
+    <color name="dy_timer">#007A68</color>
+    <color name="dy_bar_bg">#26808080</color>
+</resources>

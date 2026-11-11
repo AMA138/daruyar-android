@@ -390,14 +390,17 @@ public class MainActivity extends Activity {
             String title = diff >= 1 ? "💊 " + r.name + " — " + fa(String.valueOf(diff)) + " دقیقه تا مصرف" : "💊 وقت مصرف " + r.name + " است";
             String text = (r.dose == null ? "" : r.dose) + (r.meal != null && r.meal.length() > 0 ? " · " + r.meal : "");
             int nid = doseId(r.name, r.time);
+            RemoteViews rv = new RemoteViews(c.getPackageName(), rid(c, "notif_dose", "layout"));
+            rv.setTextViewText(rid(c, "z_time", "id"), fa(r.time));
+            rv.setTextViewText(rid(c, "z_title", "id"), title);
+            rv.setTextViewText(rid(c, "z_sub", "id"), text);
             Notification n = new Notification.Builder(c, doseChannel(snd, vib))
                     .setSmallIcon(android.R.drawable.ic_popup_reminder)
                     .setColor(TEAL)
-                    .setLargeIcon(logo(c))
-                    .setSubText("دارویار · ساعت " + fa(r.time))
+                    .setStyle(new Notification.DecoratedCustomViewStyle())
+                    .setCustomContentView(rv)
                     .setContentTitle(title)
                     .setContentText(text)
-                    .setStyle(new Notification.BigTextStyle().bigText(text))
                     .setCategory(Notification.CATEGORY_REMINDER)
                     .setVisibility(Notification.VISIBILITY_PUBLIC)
                     .setOnlyAlertOnce(false)
