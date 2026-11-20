@@ -155,6 +155,14 @@ input:focus,select:focus,textarea:focus{border-color:var(--teal);box-shadow:0 0 
 .cfmbox{background:#fff;border-radius:22px;padding:20px;max-width:380px;width:100%;box-shadow:0 20px 50px rgba(0,0,0,.4)}
 .cfmbox h3{margin:0 0 8px}.cfmbox p{margin:0 0 16px;color:#475569;line-height:1.9}
 .cfmbox .row{display:grid;grid-template-columns:1fr 1fr;gap:8px}.cfmbox .btn{width:100%}
+/* ---- v3: پرونده‌ها و ثبت دستی ---- */
+.seg{display:flex;gap:6px;margin-bottom:12px}.seg button{flex:1;border:1.5px solid var(--line);background:#fff;border-radius:14px;padding:10px 6px;font-weight:700;cursor:pointer;color:var(--ink)}
+.seg button.on{background:linear-gradient(135deg,#00A68C,#008975);border-color:var(--teal);color:#fff}
+.fchips{display:flex;gap:6px;overflow-x:auto;padding:2px 0 10px;margin:0 -2px}.fchips .pill{white-space:nowrap;flex:none}
+.fcard{display:flex;gap:10px;align-items:flex-start}.fcard .fi{font-size:26px;width:46px;height:46px;border-radius:14px;background:#E3EEFF;display:grid;place-items:center;flex:none}
+.fcard .t{flex:1;min-width:0}.fcard .t b{font-size:16px}.fcard .acts{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.tag.f{background:#E3EEFF}
+@media (max-width:430px){.tabs{left:6px;right:6px;padding:5px 3px;gap:2px}.tabs button{font-size:10.5px;padding:8px 1px;white-space:nowrap}.tabs .ic{font-size:18px}}
 @media print{header.top,.tabs,.noprint{display:none!important}body{background:#fff}.card{box-shadow:none;border:1px solid #ccc}}
 @media (prefers-reduced-motion:no-preference){.toast{animation:pop .2s ease-out}@keyframes pop{from{opacity:0;transform:translate(-50%,8px)}}}
 /* ---------- آموزش درون‌برنامه ---------- */
@@ -177,20 +185,30 @@ input:focus,select:focus,textarea:focus{border-color:var(--teal);box-shadow:0 0 
 .glist button{display:flex;gap:10px;align-items:center;width:100%;text-align:start;background:#fff;border:1px solid var(--line);border-radius:14px;padding:10px 12px;margin-bottom:8px;cursor:pointer;min-height:48px}
 .glist button.on{border-color:var(--teal);background:#E4F4F1}
 @media print{.guide{display:none!important}}
+
+.dark-mode body{background:#101a22;color:#e6edf3}.dark-mode .card,.dark-mode .sheet,.dark-mode .guide{background:#1b2933;color:#e6edf3;border-color:#344754}.dark-mode input,.dark-mode select,.dark-mode textarea{background:#13212b;color:#e6edf3;border-color:#405563}.dark-mode .muted{color:#a9bac5}.dark-mode .tag{background:#263b47;color:#d8e5ec}.dark-mode .tabs{background:#172630}.dark-mode .top{background:#172630}.dark-mode .disc{color:#a9bac5}
+html[data-font="small"]{font-size:14px}html[data-font="medium"]{font-size:16px}html[data-font="large"]{font-size:19px}
+.stock-alert{border:1px solid #d33;background:#fff0f0;color:#a11;font-weight:700}.stock-low{background:#ffe0e0!important;color:#a11!important}.chart-bars{height:180px;display:flex;align-items:flex-end;gap:5px;padding:12px 2px 0;overflow-x:auto}.chart-col{min-width:0;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:4px}.chart-col b{font-size:10px}.chart-col i{display:block;width:70%;min-height:3px;background:#159b88;border-radius:5px 5px 0 0}.chart-col small{font-size:10px;color:#84929c}
+
 </style>
 </head>
 <body>
 <div id="splash" aria-hidden="true"><div class="sp-logo"><i class="rp r1"></i><i class="rp r2"></i><i class="rp r3"></i></div><div class="sp-name">دارویار</div><div class="sp-tag" id="spTag"></div></div>
 <div id="root"></div>
+<script>/*__DY_JS__*/</script>
+<script>/*__NF_JS__*/</script>
 <script>
 "use strict";
 const DRUGS = __DRUGS_JSON__;
 const CFG = __CONFIG_JSON__;
 const MEALS = ["ناشتا (۳۰ دقیقه قبل از صبحانه)","قبل از ناهار / شام","همراه با غذا","بعد از غذا","قبل از شروع ورزش (Pre-Workout)","بلافاصله بعد از ورزش (Post-Workout)","قبل از خواب شبانه","بدون شرط خاص / موضعی"];
-const GROUPS = {chronic:"بیماری‌های مزمن",sport:"ورزش و تندرستی",beauty:"آرایشی و بهداشتی"};
+const GROUPS = {chronic:"بیماری‌های مزمن",medicine:"مسکن، آنتی‌بیوتیک و سایر داروها",sport:"ورزش، ویتامین و مکمل",beauty:"مراقبت پوست"};
 const PROFILES = {general:"بیمار عمومی",athlete:"ورزشکار",prosthetic_beauty:"مراقبت/بهداشتی/زیبایی"};
 const PROFILE_GROUP = {general:"chronic",athlete:"sport",prosthetic_beauty:"beauty"};
 const ST_TAKEN="✅ مصرف شد (به‌موقع)", ST_SNOOZE="⏳ تعویق (۱۰ دقیقه بعد)", ST_SKIP="❌ مصرف نشد (نخوردم)";
+const FORMS = ["قرص","کپسول","شربت","آمپول / تزریقی","قطره","کرم / پماد","اسپری / اینهیلر","پودر / مکمل","چسب (پچ)","سایر"];
+const ROUTES = ["خوراکی","زیرزبانی","تزریقی","موضعی (روی پوست)","استنشاقی","چشمی / گوشی / بینی","سایر"];
+const FILE_PRESETS = [["🩸","دیابت"],["❤️","فشار خون"],["🧈","چربی خون"],["🦋","تیروئید"],["🫀","قلبی"],["📁","سایر"]];
 const DEFAULT_TIMES = {1:["08:00"],2:["08:00","20:00"],3:["08:00","14:00","20:00"],4:["07:00","12:00","17:00","22:00"]};
 const LOGO = `<img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAKAAAACgCAIAAAAErfB6AABAyElEQVR42u29ebhsV1kn/P7etXZVnTp1hjvnDrm5GS5DEoZAIBCQyYARcVYERexum7Y/5BORfj5t/RRsRdFW+2sQbTvYtjPaQUVsUIRIxDAEAgmQEDMn997c8dwz1bzXet/vj72ralftofY599yb0I/1nOc859Se1l5rvdPvnbD3lW+m8Q+U0h8ARKSqiilnbuWHoapMUJ3+JKDUaeU/xTcsPhrNUnp+oqvKDzV5ZvLa4SoAINGCUXG0clM/qrq101fy3Ya/y4xwa59+nh63oY2YPDP6u3jPpb+0ZXZf8pvot+JCrDETVFRBWu6BeXSz0U/0RCIiTOFV0RPzeEzGTJZf2mmcMiblBEvNpASOHlmSji/k58LzjHMZ6hP16ImFS4/Epg+keUiGLLkgbxRTwAaF67nT8bm/3fm+A5Qoot1pM8NGyCqeJPvxyUYfyU0f0co5srpz55TJO5S5m/VMACGSNpJQ2Ei3XC/dqK4xlQ6SUidagaFQ2kJ5TBSLZKR220bvf+7zmaF2Fb7pGItGaYXtSUKXT0LV4cn24bQAJoaCot9TZ/DJM8VDpQw6+jl3prfRu53X+cm8W/HYOHOayjPnrxdFt2C+JpjeUNxuTk5PVWvPHRjY0FU2vkzHdwRRZAfG5mDpOUpP2XnUrrXIdixjv6ZV0DIWcJ6FmiSMYit27CjGtJ+Cp2xObnLeBen9mLl3ktbq0PTeQq31ySyV08+aFHblELHzqo7YTJrIxmWSOhtilJiIZEDlulmAK4PyUmOIFIK8uRjeYSo+PL69J7nXRseZnLfk30bI84DgsDUcK48zRTMjqoQMbsHlxUnGYp83sKlghz15NPnpZt6WWr0FhwpGYjPJogjR3lJUq7xvqvzRPCy9jERP0+LmxuM5YXxiY3wivRCZ15a0yPnrSA0+H/J1Q/c0Qka+zpA4iyd0faf4pgplZGymp/TPYtqdOJo5+3lPlBKUXZJ/AIh0l/QMJHlJ+TksawefP0V0E1r+pJ5VWpRcGKI5l6cMr53ktFttRtsLPDt5WAzluDM3t3NHAHUhhzhH7jUx2ry7Tfk+sqY0aU0nrYlzJTZ+8kjQfwGWz8eHNzHLF3glFLnCsjytl8STk4Zf9Ny8E/KObm66xgCl4VBl+itPnRa7Cf78hKiFF2ZXTSB36TctHkYe2Le5Kd0SYrNbQmFT5Y1uSv/csLf1nEcyRpTTULMNvUup901tqXP3ajP9y+dJ8zkfrNFe0BfY1L4uT51ba5efC5K1te/79aFF/8vnCfnYrdr15/ucrUJ2zv0OW/W+m7Oe/4WCnzA9/+vDDv66/pSxHTcdXXU+Rgs973uRv74o7JxcsBhgJk8mxOy82veqai/YihZH/6SDXfJuMnGr5L/xCSzDwLLoWyNRuIkMATEQAfDMBBApERAPQIhIZUq0TZl8nzLQesE5E2FumxkJhOj8L3DJOMXyqM0kxI+hnQEApASvKkIiSkoGSvCGwDBgGkTzh6TkBZ5IBAooAVDDZIhAYBTHG24VoFsyYGPTTwFgn2wsqDx2o4hiHwFVeC8ORJCAdbbi5ircCGi2QjMG1UAqRgPjDFQkvsYLeTF9kV5IbdFWH61+sNbTjqLnQV6twlQU8UqPjQcJp79yFt3E31/QXOqMCeILDXRsqTYFAuBExHsDma/rjhp2zMi2OmaNVkxoQAArwasHceQhiJZLiYnEsCrUQMgRETkKQ29ajpfbfqkTnO6iFSL0zKyWB5d+/fm7tgyLLoPXFO/lwTkSC8mJowOtUEGsilCFSeaqfl9N9y7otprULBGpCJRIhHwiwJtViRRRGocQkSciEU8gR6DIOwRYlu01v6OGK8h1PVa79HjTPt7GWheeEJCyTnBupGhXMw4Uva9RISLJ0XbPBQvbsgW+QERLpACJIlQJWA7O+kvn3a4Gamw9kVdyPiIzAkeMW6CCOBtHKZKsRGRIB44EVSUlAUjjZHMRIoWSBMy7G/6iurtSzemmeXiNjze572FBzFuYlBeF50EuDAUnnqPpjZiUN/Fu5ZHmibyNm75TzjtBAZBkKWpMENVQXS3AZdvp0ka4o06AOo+eeEAHzwEDbNQKiNiLhsrOc0giAqeqylAiiIExRisQy2QJzAoDJ6pCQgpSUe89kaqB7J+X/fO03Kk8sKZHV0wn5IAUhrRgZSRF32lulP4nSZcydcY0z+JNnHkhlKyCyKl0CNJkkEr0X09chf1TttHhnTRf60FMKIj2V7S6DLWGiajv7PI6rYW60kOzi5ajnkcoKkIyykoRA2YWC1O1qFudq9FioAsz2gi0aoQAJ1HQOgtRRNYLNf+8uj5lke5fwiNrGnoEEc+nJ1YyT5nhfTe8eToFKxfpkNP4S2bC0ti/kf2T2p6GIM57FXdgga7a5XfWVQReiaCkLCqG2Vglr20XnGrKybY900Orq30Pr2wMGY1s3hjoUIWa0dNVSZUIJCJMZI3OVt2uKnbXaeeczAVEJN4bH+9ETwoDY5jO9nD3aXt0xRKIIeeOVozNpJDaKIl/M/eBS1LzhVjg6eBUaoE1ysLo+XAukGft0ku2C5H33sRBtEoGCCw6IY437aNreqZtWn0oNFBlSyAoiAg8TKyJJK9iwrAZPFlBpArxcCCC1q3fWXGXbNd9s6gZdaI+hkdESQNlDfiRZfOVx4P1PioVgZ6TIXQeFjjaxHZ82Ua3Hptu8pN7NDmgyOYjT0Qgk1xyINJzsu6QMpSTwVAkXkPyly64a/bRrNW+CClHdQeYYQJeb9EjS3h0lVe7ULBhBEE8KRLRmxKR+jH4bAK/GEiERPYAs1ZABOo681jIR1q6UJVDs3Rou5+ve++MVybyTlVDuXRed1dx53H7SBMVUmbSeGOVWc6hhFJVsCRmlQhCykTInfmkJpSUdPBDSom+NHOXPS+hZSsRp0VK1tokdfMIbohOS+vsGPDgbGRu8ksATrxh99z9/tm7xRqEEt8D6qvGdEK++wx/4aQ9smqdoyAgw+PXoxgIK8z7w4iFWMOG0XV0oqWPrVM31MWq1iuiwgIwkROtVPTgIs1UcLJNXtgwKRWAqeNzkliJxEwO/1aNLLvsEQ7PzF2dyGaYu/y5ifVA6bT4BLqT9XdiT42OjjZsVsG36DJ13jeqfP3B/iULFAoEBFJRYytWfHDvaf7cCXNkjZWoYhQgyTesS9RRKziKgXIKa+CFjzfNkVV2QjtqsIE6T0ykqiL+ojp2zcmZNnU6MGbII3KfngzzhNIAB8f4TObswOIQUUwoM2bu8msvsL8hd7qZpOd1z7y85GB/W5X7niJMGITA4GSTP3vU3r8MIQpMBDvH4jMBuCf/LpOhO1VwUASEAFRhE4Y4uk4nmqYeyPZaJAQIIE86Z3j/Ai13sNJja0o6TvJpcwMei+LPhhZYC0CaiWMjyTpOoESxYqsT1wLU8/6SRXnxxb7K5IQZEJXAWKXgrhP8heOm7chaYjICJNQEAMyjim7FVKuRL2GD6gsixR0MG1A7pEeXTeh1z6yvMEcWrxdfAR1YoKajpRYCM6RK5G4gHSLqICBzPjeK5KdefBMUjM0dGy152iMLSN/5y3fKC/Y5VnYagUVStWa1i9uOBA+ts2UygI7mokCbKZL0WYDMVPffwKwiEJElsMHxDp1et9tnZa5CzhNgvDoGLpmnjuB0C9bE9xy/eUJwJMQuTR7NNB2nUnYaVyhYYCWKsYHBABFL/nES0aRRyxEkX+TuHX4FQIkVQNf5K7bLC/Y5JRZiAEJUZftoM/jUo2atZ6pWVUCqAIEUoph8SlQfaDDOjDfHYMqQfzTpp0LSZ6WJOyhAQMBoOjqyQg2r22sUEoFYyZPw/gXtej7d5sCMpxol7P5YIY2mNJcjUqymaASWT4Ab6RzwNOQwjYITqf4odMoOvo+02OkpcvFQCNIL5dIFue6gU7GeiEmgqMDeu2w/d5TFUWBUBpnUA2MHiPnAuAY+YKebLfExcR9KlECbJA4iWOZQ8eiKNQYXzYoqGFbgWenAIq13+Wwb1lLCdZ85sOT36T8ST0cBsea9b8ECxwgQprHf0VZEtDMxJluHqx5vWxqQBCtBncNF8/5FBx0La+T4YQ4sf/UM33nCWKOGY3RamXSwKYaJeROTMj7IMTtkQ7wOIx5DSpy5XSIZygCMPr6mQrx3XgXKykoOwvsX9WzHrnRoTOeKGTKS85a1SMNHji90kf6TuTk2IIM3ShEZ6bzJ2QPIeZ2r6ksvcVUYH/mLlAMTfOk4feWUrZCOAeoJpgTd1IhKa9EJuZi7OYYRQaTMxI83SQX75kUFgPHkLZndC/7xFnf6ZIZ30SEtpit9Zy5dJMXTFJxhPyXslOHNpyzwhrKvUqZtQsyM22gKIgnFMr3ooFuokhMQIMwVQ185ha+csoFV4TFdO7YLEfmEoeOQEWTSuBwDBCSWnByJ6fzNAYkDe4ZvxEpQYIQ9xfQR+RyVmABiNlZONj2I986zgzKp91KD3TarR1ZYfeytBA9XF7m7TRNuZWRu5fFVgGquTWgalz03jRcWOChKFnfJ5oSDsAomaCj+2gPu0CKFLharFWPuPcN3HjcBBqCdZlilyV1SFEUw5M9kDRPIeQmd64feiRLBGmONmXyJBG+Il5NH8i9TfMavBjWW6HgTgdGLZtV5gNWrLlYQWPPYWqRU6zSOmJp5bNSDNOkPLrD0y8SolnwMx9IzlrLU8+6KbXp4gXqOABZ1NWsfafIdj5PhCPMY8vQoFpI1yeUnoz4GR0cIuSdvAPBMK2x1V9cDE+xYrG/ftqNRq/V7/eVW+/Rap91uz9jKzMzMMDw5vg8JEQkTkQopYje1ZqDBsXkRRWXAGpYvnpLZCi6ek75jw9r1/ikL5nTTPrhCNUM6RRVQ1TKipzxp2anmYHF1wuKjadECIhL1C1V+5t7Qxwi1rxh7tsu3P8aQCLI/d9TMWnaeWuvLVxzYeeO3Xf+y6575tEP7ty8uzFSrYRiuNtsPHzvxj1/82odv+dKd9z9Wq1bqtarzMvHoCYNgYkMnlbg4NoSVReztR3T20u72mnECsHgKn7OPTrdNx5HJxlgyTaA8y2djSsbeG35kaG8hiwNPfpMcygb3lKgSIH0vLzogl26nvlPDqmSU+ZaHzek2AozRKE3SqCA1L8pKLvK9DK8yzGvNzu7F+R9/wyvf8K0vW5ybyxtSv9//8K2ff/cffOTeh04tzla8OC1ESzIXO6klKYH6Ijur/hWXuohxCVGVzaPL5rZjxpbdvskFHvwRu7ALMMUxNVYVgJm77NrMCzLj1CfgGJRY3bFJYZATObBdnrFHvSOGKqFiKncdtw+voZp4+ZRMTctdRMHqcdxMtMAKwBqzvLb+gisP/dGvvfXVL762EgTRSL34U2eXV1abnV6/Vq0ACJ2zgb3q8kte+6oXPnbsxJe+9vBM1Raok0h80pDAoKwoyLCuh0SCAwsqCgY5NYt1WulhuQuL8npr1n5KPDrf3hluuEG12Zz3SaoFmkie5XQh3lRpqKR5F13JIt4avXoH4GN1K7Dm+Drdt8QV9iSa6U1VJjgZeM6G45R4X8dKW2SwGGNXVps3Xnf177/7rY2ZmTAMgyC4+/5Hb/7EZz99532PHT3R6ftqxe7bOf87P/+Wwwf3ikgo4WKj/r7/+EMNa3//o59emG8I+UlEKc2xhk69AQYwWgBVG6B/3xnaP4/d8+JCJQ2h9sodfHLdqCixJmYshf1pGoiNQnYxSMBAAucar+8xqZZa2mx6zGRuRTKoTLPRBgnVP2XB7apyVwEIyIShvfO48eQDJR2V5S9vtiaYClljWp3uNVdf8nu/9GP1asWJdkL3M+/54z/+6GceP7NGxm6rB/WAO93e8dNLKytruGSfqhpjvPcC+skfvnGl2/rQP31lW2PGeZmqQkbadbrQlaoS1HjQXcfx8lofYIWGXnfMyqFtcv8SBSOAemBfTAPwRwgxl0nzGR61xT6i5Pfp2sjJPW6ExAw7+SCly8GpyoylwzvgNAqP0qrlu5dwuqMzHMVGAVASwjgPgBLFsToxcKgprqMMIic6Uwne91M/ND9bd16WVs6+4Sffc8vtX6vPmu96+TXf8Yrrrj58YLFRb7Y6xHL1FZeLSOSGAjBTnVkF/8y/+fa7Hz115OSZug3ceJuDCQpjYpWx0JdYRkocV0GW7cm2v/+MXLXb9MQQe/J0eLseXQ2cEA9sXEUqbA+TvCNuHTUw4YdoRvbZ48rm5pxQBeVkJvZjtO8EKn0vl+7wizUNPRGJZTR7ev8ZVKJA1QHPR1kdZPz/kI09dXbtN378dc+44tJ+6ET8v/3Z997y+Xsv27vwzv/7+3/gNS+fuIMXQWKE1hhjKzvmzVu+8yVv+40/rm2rkNNNWIZsvOpAalhL/7wSHNymM4GKkiMs1PjANn3gNFWGAcKlMtg2lKqUHCHn+Fcm9aOBfTYOuEMVcUqmRLai0ERgc7RmqorAyuULXuNpNWD7wLJd74kx8IhwKhBBI5tTKd4XEegRpYjFPxnWHtPKWusVz33av3/tjb1+vxLYd91089/d/sChfdt+75d//Ade8/IwdGHonPPOe+e8c36MOQFENFOrrrU6N1x39dMPbG8ur4ApVs4TlKtE+TM2dA1FvBtqCa0eHlghtkrKgGP1l82rZXgZonO5jmsFKXQwG/GcJPnzuKcAWQovl6GSks6ZCSUzMQ6mkPxFdV2skRcCqVFudexDq2wYkm15D+6DEg+lnrPzM8Fv/IcfZDbVSuWWz971O3/+DzMz/Atve+OLn3NVt9czho1hZjDADOYMuWeM8c7P1CqvvO4ZnbWzPgwnVI2NonhQYmPMQyvcaqkBEVHoZXvdX1SnEDxoHJn3+sU+KMopeDlx/jklgA/oaQw9n6gSHokpz4RDi8RgJRaFMfrYGppuPF4uExmWgRWULRpElY1ptpo/9yOvvfLyS7z3Z1bWf+o3/mC51fq+G67//lddH4auEgTpqOzk7IyOgpxzz7vq8plaTToddV0CSGR42gQ2gARCF/EzTaQmgwgW3OrRI+uwhkRYSKF0cFEMj7lPxvbQyAU/7B06BoOXc5dFX25Zhv+EUj32bCc6V/O759R7InjD6Hl+dBVGNhr6m9Gbz/DKeuebX/SsH/meV/V6/SCwv/i+P/3ifUefevCin3/z6yQyQ1NwzUQAV/Svcw5EYRhetGfP4uKiU/W9nvS7yqYQWZwyZBjlR9fQdWKYAPIie+ZpbsDMskropm9eQMF51fGj73lSvpSY5PSZ6TT7sbO95z0zNDOo7czAiTW70qN8WKdAs8A4lNbv+11z9f/8tjcoSbVa+fAnP/c/P/xP9WrlP/3o9+3dtehFOGdq0nwvDEMi8qKNem2uXlOvDJZej3odIiGNHVFDVClVbRYZMlWh1mK1gxNrMCaKkpE6dM+MeCFwhnsfUTLk9ADrtHMwvTZcnnSKd0pejCpUPcPtb6hwnHICCY40MZ6dlSlmpjkrFcyrzebP/Ltvu/TARaJ06uzKO37r5vWw94ZvfcF33fCCvusnJcAEj524uYj0ej0ADLbWRBHOpEpAv98L+/1B6AzlsesCRzor2cfWQU5JoRBld6BBJm7FV36S884Z9rsZfoZrz1kaGeV5INK6dKZUSPgzlURQr8m2uogoERmgGeJ0G4FJxtYkxp0IAssYjEQJvgAC5uW11re++Fn/+jtu6Pd61ph3vu8DX33oxHMOX/qOt3y/98Iw5WNcer1ev9+PhtP3ru9Cgio8acjkpdvTfofA0EFhgYHkJdKIDHP9cqocMJ3u2jVPBgpS52VxhmdrEE+I31wTvGEcSdSRg7qAEhKZB8kTplNwmcCX/FAjhmO3qyYzlr2AVI2hMy3qhMTIw73zkg+SWjqDOsJ7tzf+89veoEKVavVP/vZTf/DRz87NVn/px75vz+K2oT02sU3zAi7X19e99wRYy2tr6+vrbWuhg6JMzOxd6Hsdhcl86ySnzYCsGbYTylJTjSFS41SrprezgjBWpJJ8ZSg+StZhocLoay4ncQupKnnGODdAFE28s0YgQeTqJz4Vsk5GRsfRXCgwvcbhGnCrufaf3vK9hy7eR6QPHj3+rt++ud/t/NBrrn/l9deEzlnmPLVg4i2YudfrNZtNZhaRwNp/fuzkSrNvjFXAGAsYANZa7Xel01QikC+ec4mIEoMM6mj2TvWNDhzKDNoxo4MQNh4QH4+Ci5V4VCs7m3WnJG40U5JgCWVl8CaDFFUlYFmsk8RVNajvzFKLGJuW/dFqra63Xv+q677vxpf0+n1jzM0f+/Q9X7n/6sv2/vSbvndCsSpjsJ49e1ZEwBydfevtd3mvkfa9vLre6XZ6/f7yypoSieu5TtNH1XjKT5cSmHG2paGPA+5UddusBkylg6LKu4ST7MSm/YhZApxUY+9HGkjK80oSiLzqjOVGRSIVzBCtdtHqYvK94pDbEiFgAKDQCsl3f+MLDNiDvfff/A3PvfO7H3jz675l5+Jc6LxhlJmvyNOwtrbWbreZWVQrleDhI6c/+bkvz84EfQ9V+ok3ftu3f9MLDZsPfezT7/vA/2auWuek1+eZmlEnxAkXeZzKEoVeJfrFIIoPwXoHzb4u1OCFvGojoJpFp68mI4ofiUj74uypaN6QCmmK0Ztk0B2y3IWJNLKY65albJA6cTvqevl2VSElGLYn1oJH1sSarFjRSddcZqwhA33nK0Hwd5/+Mlhe8KynGjY7t89/76u+4ZJ9uydWt3ibM3O/3z958uTAYSyzc7Pv+ZOP/uMd98zPVlutzq/+1Bt/8k2v37Vtcdfi4je99Pn79mz/m0981tZm4bsinkxlIF+Q6SoYmziG9h3vqtP2WfVCpBRYPt7Eeo8Mip09mMIhimK4OE+H1liQQHQCt5rON4ZZpKSKWSsWEBCpkmA1Niiz7jAZKZyKMlQD7fTdttlat+9bffl/3/eB73zLL93z0BED7vfDvhPGBvr3qOqZM2dEBESiOt+of/6rD/7Z//7EYmN2fb39zCv2v+m7v/lzX7776m/5d1e++k3/ePsdb/z2G6579lM77SbA2u/5dlNUeTS8UST5BMZHA/gda30dkCUZaMOQqBKTcqrk1mRcev60pyOsN24HbxbfIp2tDJFzEGi9qwl1aWONx4CO4z07F/7ud37mF978PUS9iql+8ssP3fjvf+mmD/59pRJULHsp5X6JBfnqarvdZkCUrOFe3//K73wwdFyx3HOyf+8uhvnYLZ9/6MHHjx4986GP3kaEyy/eG/b7ICGCuND1WgJDxFNhosjCxHqXEt3qdLYqtMluDSU/nM9f83dFWfRLBKyzNg4CUVVPaPvx0ICiJpQah20MqcKEve673/LaQ3v3vPl1N37kvT/1zMsvllBDpbf/lz/9/v/n1x8+dqISWPHiRQr0FFWNNOezZ88aY5TIeT9fb7znj/76C/c8UJ+reyHuSV/9l0+fvsv2Z7/xysrzLr5TOnc+/njHh+QEIgRiZjjn212IRjWYMlGL6A+OwsObnrxQZE2TaD1QDKLJIMPrt7AE7RbkB6NABivoim3UqMIrGZhQzH1n2YkO0rnyVnrMlxI7BPnM8toPfusLf+IHvz0Mnff+4ot2v+5bXmQtbv/K/cSV+46e/uDffmq+UXvOlVcYZuc8Mwq82qdOnQrDEID3Mt+Y+Yfb737nf/tfs4056falWq1ce+jEpYvvv+fOe4MeX3GR1OjhfvMPbr/9IdfmWkBrITshYwAr0vPqDFcJk3ScyqyBMvSSRW/BAjC46/nRVXCcz6oJWGpKEmzpvOFzWmAUpsuwQiHu8A6ZCUhFAdMV88AysnDgTEQMCUWx2wkP7V78H7/wlmotiIjHezHGvOS5V774mqfe9bUHjp1cEuDDn7j9noceu+6ZhxfnG857Gg95jNseM6+srKytrRljRMTaynqz+2Pvumm11a6I+kO77Kuu6hzeedZ3K0LsyTiV5XVLJESOVHfW3EWzpqdmvUMMkKoPyRMFgRkPmUoxWxCpXLqoFUuiYoDQ24eXIyUaqeTmcy9VSucxwx8EITGQw9s5MCIKw9oJ+aFlQygOXUiNXhmm3Wq9750/fM3TLu95DRgAIgL1Ljy4d/drv+mF/U7n9i/fb6vBvQ+f+utb7tize+Hqyw8yc+hcMnuMmbvd7pkzZ5iZCKI6O1v5xd+6+ZN3fGXR2t5l2+2Nz1oy4cVMP3vt9b/2ilfed3b1nrNLQa/rvSDqiS0qNev3zFE/5JUuMUMNoe/Fk62AeQAdZiySgNyhBapZVTVK7NU8ssJCylm58+ec3r9VSlaGLIaSqiiDrJFBBDm8GqECwT1uMsXyKDB8dq35pu956Wu+4flhGFZ5zJtkjA2dn6kE73rbGz/wG2+9dO8uVTq93vzhd/zOj/7iTaeXVypB4H0MhEf0EWnOBAqFt83PfewzX/6zv79tfqbS3d2ovPiqM821V+/ac+tr//WPP+/6HTMzPenHBWdlwEUBE4r6sP+0neHuKryHISIDF2qnRSJmkNw96dIA4GH6OvRGqWE1lAr3LpiNJ0IG58liEKllf/k2soZUYaCt0Dy8wijPc2DAzZ67/OCem97xo5UgO2iZgaiK1uFLDnzfjS9ab7e/eM9DQVD54tce+utbPntw766nX3YxiJyqNebs2bMDVFKrlpaa3bf/0u+3Ol1UGa+4ejXQl+3a88Hvfv32Wv2XP3vbv/rY39y7ujprK+Ha2rhqEGGwJHN1e6rFPgY7VL16j6ACY6Lwu/HRQlT00IKfDSBKAHu1D61Q6DUnb72ktlMgpzMtsI1qy4OMX8qqZadDfTiZITyhW0X+z2Sv4Dgi1ZOq7/3aW1+/fX42Ep9pHq6qDBhjwtDNN+q//vY3/vEv/+ie7TV4d+pM64d+6j1v/9X3r7Y7FWvXm62VlVUMcgQqVfvum/7s/sdP1UygT9/vdi/shPntb3p11QRv+uiHf/rTtzYV9WpFjHAKe4twOpmzfn9dnFCcA83kne+0vHgeOYKGvrw4lJsQF9SKSwkAlACQh1j08CcjGi6N/+cEFJ9XO3iU3zf6RzeAu7LhpeW1f/td3/iK5z8zEqXFjN0YFu9d6G580XM+/t9//vU3vqjT65gg+O833/rqN/3iP3zuy2G/o6Si6pxfmJ/961u++Bd/+9lt9Vrfsn3a/rV+519dc83hnbt/8/Ofef9dd+xszBkVLxK3omZOqxks5HfPUWCSM63ehe1mKNGb62RwQSJaQ0SGDqvNidt0GbkUix4rhFaoLcf5P3lp3aNdltAxVC5dRMVGliD6zjyympNxPVYdIPKiNVvdqw7tuemdbw6MAbjMDESuxND5hUb9NS9/3uFL9nzmK/e1O+FKs/Pnf3PrysrqC695+sxMhQTHTq/+xLt/N1SyPvTbqv5ZBwzrr7/kGxcq1Tf9/UeaYIbI4D1cK+LD4wyQQUpaNbzUNh1Rk9jRIupDYyuWSDASxmrYXbFda4ZVDYCeMw+cZYEyUqhDEsnCphn3eaHgkQLplZz4yC+jCsOxwJxO+6qq8P1fedsbFxqzIemG9rc17L0PnfueV734lpve+Z2veE7Y7iLQ3/2rW9/wk//1C/c8srht8Vd+9+bHT6/UK8aLR6PWE79/Zu7pO3Z/4cSxR7vNahUySCrVSU98gnSUwKz1ykRCNwASCdvNUAHiOEghCtExHM2AZ8ApJFVVaks/dssYcYrJkrIXcE+JVCKxYw1ZQ2FI40GrQyR3VHjABmeXV9/+xm952fOfEYauYnijZn4UrRKGbt/uHb/3rrc864qL/+sffCi0etcDR/+vn/vNF1/7zE994Z7GXL2vKsymGjivu01QYX6s2ew5mbEVgSopqUIUXiU7cVeVFJaJxpYpziMS7ztN1GbZRPkaRBYUQEmJYBTc8yqUGTaGwtktv9vPCwUPpQ6rSi/0TFASVbGGKlbyk4nj1WWsdf1zrrr8P/6b7wrFDyq1Txa1KAYjYynOEK/Hjx1/3atf+IH/8pMvecblCLuhmI/c+iXmKgMgZlUPqlg92lr7+GOPfPzhBw1zDFgkI1UxxVGd7WkV3+u2xMcqNCpWLYsKKXkm3wvVC53P1kk8xBImdOks21Ym0nbzXjKWWxAVb1oh6yCCw0JnGakk9kjrSCQ7qfbab3/jjbVaVb3yRBByuZkdwhqtdrPd7Tdb3QM75377nW/+mTe/Hupn60FcHhdQGCVjbe106F7zF3/25w/cP2sryY0i0RMHqUrxaOM/CEqC3Nq/ACAu7DTJexYvdUsBWOIEPW57aG6j4k3QVXpmuOSVuRpNYcQ9A9TsRk+GEjF0rkpe886P8Kl2J7z60j2vfMGzRSQq456c7jRCNOEfTNyNnXNLS0vMHDC32v2gwtsa9VbPC5EMfQMDgNAwz1SrlcAOgx0nwoWSwZQT27OIhsCk0uu31RHN1RJGhVKzx1qq9VVJ1SfDfV4GZ96oBh9DvhFk3PTqB6FJUFmoalytMntkzNzt9V/2wmfUq1Xvhcbx98zxZIfrAkS0tLTkvQeJ835udua+Rx5/x3v/JLBJiEiIIJYnrIPJCseJAl3Dml8R1ZYJ3gdgvO/3mphjREYXlLzqeqiGlbQMN9ocvni+7OA4xxDgZt/2HBggRsi6UJGaGnEF11YCc90znkJFqH32lkruFWZeX19rtVrGGCEwE7H8yk03r3f7M9aONoQqi1LFIpW+kLZ6Y1BifEiqKiYu6D3lDobc4oxE+jYz91zQ7IM3UNRhUzI4kqwp+ZqxI8aQpiK0a3imMklPqCXEUBJRJ42qzNbUIwuZISLyKvV65fL9u4mGFe2KGvllxm8A6Pf7y8vLAIsa52lhtn7TX37i47ffszDfCMdmlEUd14NMnCjWB6N+aQBrHJk9USqXa4FwbtvTKDtLRXS+TnM18T4K5zBNpz0hVkyiUpNYVQxpZRWW03x+HodpnteADjDDCS01CRyjGIHV7Y1coU4kokFg6/UqJWzPMkbRxDlLS2dFlNl47xo1+8V7H3rvH36oPlsfsv3hlIjlKC6/jPDLkHOq4XxVAkZBYQICQtHd81SxwyrTWG6zEyTCezfq6s/0uk6igVMkfJwxV8RFdFhxb+RKiiKSlEgIoktNyKBqKxPtqXqMaY4KIkZM96rn2OaPmdfW1trtDrNR9Zal59w7f/sD7U5YYVWVZP4eOa+LVbO9zqHPhnMxVvtaJ3YAiIW0YWTeJtol0LB6yAhqZ2DvnGMycdtg0rMdQxio50V8OF3efbAuUgBBxqKqVJ4rNl2aS9mSXepT13nDqgQvumOWZioTnZyTine/79bavRhF2ODYAESxOFFtBi8yPz/3/j/72O13PbDQaEShPCM9HPDe09P2SdVSioKHToKpygwY7sCip+wiS0pKXnyjohctwAsB3jK6oT3TVsvnspnLFKKLvUkZ3DyiSyWOQ28oL7s+P3or6hhntN3DUsuCmQCn2gh01wx5HQqfUeq+go1pdvoPPHYiub5p91EB0HHmzFkRIhJRaTSqX/jqwzd98JaFhTknfoTDRKPtO7lkJz91v3eOmCc1iWmNcYdZNPCqu+p+ZyChizPSVRNFeFmdw745mq+RFyViZpxtUysUVqimrBaN7GswJepuZmUy5qzIxuzgcw0AA1gRHG1C3SA0xbhL5gWTzTx14EtzXj7zpa8lfU8TBmjepEexOJ1Oh5lViRn9Hn75t/+8Kz5gqzKelu6cztWCl1wpFWMklzeojgOqWTsMClGVw3uoHpDPCL1TBl26OwFkehvnV57TzJdZmkFctDJ0zDec8GOcE5AGUmNYTrbRUYoCol2IPQ3ZXsW4fyaaUBGZqVU+/tkvr7XaxpgkERdLCmZeX19fXV01BqrinZ+vz7zvj//m9q89ODdT9SqI41uJiEg0DFhfeoU0DEI/TKVB6ociS5fjDCGayBqNviGFVzfDvWfvCWvGj/VphHqPHXNm7zZ1ngBioo7wyQ6bvN4RIEJ5Gn0CsOgJXq8MbvVwYo2Y42IigaGDO1QyG1FqvVZ54OjpD93yeWYeBsBO5L9O6orM6+vrZ86ciabei8w36p/8/Ff/2//620ajHjo/WZok9Ngx5/cteufUQBmU9SNROXDmITIZh61H6UWk0W8lhQWB3OIMLdbZydjGdUKX7/EzgfEKIVjwiSY3+2TOoxMp7Q9O1FtO+32VszZ36gc+m9xBKkqh+ksWlDTqDodZi2PL3M8gSyaCqXz1oce+7UXPXJibHbASZLgjo8op3p89e3Z5eZkHcrRisN7p/9i73r+y3qlYk55GNazdPjeqZqZGzsGJccLOI/Tcdxyq8WpIK4TAw4Siqy0WMpHV6hRCLASv5BWeSAieoMxnO7XHVo2QcIyuQ8TPWb7+sGCY+qPmrpPc6mFQoiutmCamtHAVEjjB4D5COhbVeCH6B6uosUbONO2Zlt/dIO9ZyDUqeulO3HWSZ+xE5SWvWq/ww8eWfvo3//TX3vp6ZTM/P1+tVNJ3DsNwbW1tbW0tDENjzJCoZ+fmfvbdN937yIltiw3vfdquE0PWqbv1HqlViM2g/NHA/wtxnlqdLoHV9UU8ETMYqiJ+tjEbBAGpRE5PjRstqlEW50ngDFjjCAZxnp52gGar6PWFyVcoONG1J5sUsOrGwKmiHl7597GJ3ZHeRylvUuY5o+85V5snJu/w0KrdNecUpEpe5Irt9Mgat7re8nhvRziRhXrtg5+8a8+2+bf+wDc+fny9Vpmt12vGcCSnvfdRTn4UvM4mNoqsMQuL87/+u39589/fvm1hNr26kYhjIWVYqlBHiVxyEg2j3w8P7Nnxo2/6Hk+QUEWELRtjoF5V3v/nH3/48VPVanWEISNqMiuGoNHqxuqio4WaPn2f8yE4KtjH5sFVCHJ8y5r0i2eDGFN0s6jT8qiMywWh4Ai1tHDHVnV5m+6ooUc2FD9j/ZW78bkjnDLXVclJuFCv/tYHb3Wh+4kf+jaQnDp5WiGcTJ5nNsaqeB96ImrM1nuhe8d7/+j3/vLWuUbDiy+hhIznTioIxNY6lR/+ge+oZAHU/+MvPhGFpiT7mo5ANx1901dnn32YZqvc7qthDcieafPRZQSs+VWjVaaHMxSHPCS9MrEMTnYKysKzaNCwNatbyHTkSQlEbEzfq3g5uEASBbsKbatiqY21nliGjmV5RLHVtVr1M3c/dsfdD16yZ9uhi3fXakEiCCzikKYWmEa9Blv79J3//B9+9f0f+dSXFuYaqpKHuxXHRShRUAlOnFkRH778umf3+v0wDJ3zzklgzXv+8K/+9CP/1Gg0ktBmRm4mw/QcXbyIF1zGfQ+wEmBg7jxpl7oaMA2VtVSCKECjnhNxhU6e2EFlmmfFDGmgZBUGgkw5OsU8HW0oS7Tcw/ZZvxCoExB7y1io0ZFlq5wx9WCQVmszj5w489e3fPrOrz4g4Pn5ucXG7EytUgmCSmBBenq5desdX/u13/uL9/7RX51YWpufm8/kzDmvlRmGIZVK5bYv3FmvBtc+82m1ajWwlpn+580f/bn/7w+DSg1Zzb/GpZl6Q3jF03RmBqICRQBzom3uOoFgckEpTzWl8f6uObNd3G1uvEF01kgHO2jAfNLMAaNsBcRhwGMPSdaRk1D8rhl62RVOXaTyomb5npP8pcdRDSCTtaZVlUiYjRNurS777treXTsPHdi7Y2EWSs65pbX2kROnTy2tiFJjdiYKaCz2klKiFE2x26PVaV9z1eXXXn2FMbjjqw9+/q776vVZHgSIaV4pK4bvtOn6p+Cag9R1xINou394wJzqUmUANsBTVsWEsaJjiRrdSLXj1oTqAxJVjfs3J9Zlwwucf068wBO7Sif9faR95649oE/doT0PA1ICG9z2kDnWpKqBn9yVcUiiKkxAPmw3m77f6XuISFQbZabC1loilCHc5AJPB3LZdLphr98llWqlOjNTVRWfkJEZ5SsY1O27Q9vsDc/w4uPWWhWDfz5j7ziGSkBKChmRgWQAsckFBhBJmzILPCjpNFoXW7y0o57UgzIS472fJaVLp2tNMNEwcJ+UyBhDXznZ3zuLRo1clFrr7TX7deUhtPtkLCXLXozagrOKJzbV2YYaCtTYqGxANGGiqlKqU8xGcD4RX6uZ2Zk5IhKVSO4WxWcDCEO/WAuuf4qLi9BDLetq13z1JAaGHBRR19w0YjOMFRn0XUtVk46auKuJSqwPoLah72vSq3D+kawJdELJWeaer9zxOMgLFEoi4hqBf/7FiiDeM4mKbWMgpSqz4aDO4rxzXqLcAClftmETRrzz3nlfzPljtU/EB8wvvdLP1cR7KJTUqucvPc5dL3ZMeZ5avG5Lxl9qgXObTiex6xSane+hJK0aHGvx3UsUQD0xQ5x3F83IdXtFhbPqNA5XWknVGlNvgANP01usXrCPKkIV+6Kn6EVzGjobOYOqTPcs4eg6KpYlGe2cO/IBJMqkTAIM53MUeDOoYh15AlVHazE+/2UKoW0AZykbhBDRRZX07pPmyBrNRBF6jL7qoYX+tfudqJGMlJtkeUhYG8zULDirb+3WU8OUjGxEqEZILzwsh/dI6DgquVVFcKTJd5+yVZ5ab5JSgd9JtlTsmS44NDCTKM/PO92szprKsc64g/43IAWIYzSBwAo92cLeeakHxisZiKjZNcuG/bEVY4YBrTnPMgwTqI9rcJ2LV3xDy5zFmcl5xy84hKv3R6sLUV8xZrXPnz5iPCVqgg40MfCgjwqTjmHLIJMoXREXoIy8H1EISRLjTFYPHW8AGDU0ZN78i6X2znTf+FglYMDAdhw+c5T73gcmVis64p62s/e8/c4T+6LxqBKYK7UauCguYgsFc8atQOrVeUfXPwXPPIS+A0CiPmB0PX/6mO14MDTVQjgJRuaFM+R5SDdWmiifgje2qfOGEnXvlCg3JwpxSvZiMhatkFZ7uHheDOBUWJ14s3vWNmpyos3eqWFQdo8qjdx51ogniUI3L6AkVgb50Bvmlz2Fnr7PhX1iwKtYNk75nx61S22qxKAVKJlBOuigMlJtoh6n0ZJyZqR3Ot4hHZ2fkNZR6Wo91wUuo6Ele/4kbOUBezHMK21d69GBBccgUQMWT7Jzxu+ZxakWt0KK0hI1Y1dFTZoNGxEh8cVld8+RXSWxWzCoG/r5Ot9wJR3aKb0QDBb1BkbJ3nbUHF9HzQzXFdNqWyYbQFF+3zUq00sDOknBQyx6E4U/omvNyBFOEmt5HogS+3kILSQLWcbIFykCNktdWunhwJwaYkfEIBGaq2D/grRDe7ZFhnXglMgAoRjGWhXyQsz5FSGGRW0HOyNvvjOPDstDGyHpd/XSHXzDVX5HXUIHhvEqAYwQ33bEHFvFTACJo87SUeBDx3cUQoBR+xuAR52SNaLFZAIAq5KAeDjzlPYjYFSifRKL3syuH8Agw58RaE5RS+Txb5ILPMiyJctY6ejZDu1bkBkDL8SsXqRi5OA2rcCcapFTGE7X2Bre3RojKuJ9XtJN2bfL15YZoH4oBvT8y/gFh30F6jwj0qqYQzK3HbGPr1LNFrpvKNlQBuOdN8b6m0MnqR+JbuDIwdUTeHW8wBuNvIq57thlMgrEj1p1JWg0WbN82NgyUTeJSJUCxmpfT7V5V10bFXIKJhKCKl00J3saZr0nK31DSoaVMnBgBYy1qkRe03r1ULCBcnlgrq8JUIZ6r2FfL9mmNzxdr9jjnYMQA/CkNbarveBTj9nTLdQCJGqRZuT+cuz1JRq0qhv0XAXiHq3IW+BBc6nJbmlRTE7yqijiZaMyeEzUI9sRhzI2ZRavh2XTDvXoGuZnZHtNvY/Dzp1Io6KXzNFcBWt9tEMokWHN0r6sMSQqUlSzW8uMcyCAOIqP74eyrU4vPKzXXY56hfpuwIVUa8YeadrbjphmX6sWosU+K6Vkn/Gk9yxZqCZvgbNvOuYFSMvgbCwa44m88TcKHvdZDjC9yIYDxVZvsv7zsMdVXgT1cNXZMELBY8sgoj0zBAMfYV1KCr971h1c0JqlZofaYkTIQGGHvmpVUmYEliRKrVYU2/hZ3w+qY4AAcs73Q12s6jUH9cWH/b5F03cUiWhRWAOo/eoS7jjGTmENlArfVAeu7CGfjTgcEux3ICZAA4mH0fxDCTpqFEeESNQPOyiPJ3QNlKxEccQMSTDuak5vpCjyNwVKaI79qgVaoqqyIUvKx5p8pi0762hUSTQKfYITsdCLGnJwkWcD6Ttt98kh6uYS52MDUFjLqkrelyzdkvyNyDcThkqquxq45lK88DAu3iFEpu9iawyMitH1fuWzx+x9Z61FpG2UE/NImZcYBMwPHS0ooMv0ugzabBX6g3XQ66Zkw5hR8ZhxE00T2FJ8tyQmCplq4cV9n/tOq0au3uWv2EWGtE8UpWkqiQFbaCjmdAuPruJ4mzp9ViIjlowOnuF6HefCyai+LF+7ErGoiMCJsvr5mu6f58v2YO82rRgNPbxEqR5KoApRyPbBJXP3Se55qtjNoWU60WR2qM0MQqkGxJby9ab9fkkLSDluAjss6V/SFpxsepUDYxWEdiSbLBU8NCp/QlVrnPIdJ+lIW6/a5ffVVaFR1TEh7QsBctE89s5qW7DU8ifb9kzXtbrSc8ZDCRUOGPCuE2XZYWRoKikhKkQvSiIE9jWr2xuye95etGD2LEgjgKr3nnoSO0WFpAIirRxr09dOB6easFaqlmQDncKmwkRD/2Aydq6gx3CuChxVKip2+OeScuTkF6RbxqV3ZRE/GHiUVRWsyTvEVAxSAkIRJrl4zj91h+yYjTyMEdgaZWOqYTLMRNT3aIe01qWVHppdbnn0nLRa0u5CfVxRD6QWBHA1kJmKzgayWLeLDdk+S41aVCYGzpOXYY9iJUaUR36mbe49Q0fWDAEBK1SVeEryQRmVLt0xjomI1Cd7JBetEWvmTrJl1jVvDxZ/idLZvTTeH2IiXkJVNQCT8CNrfLQp++fl8ALtmiMDdT7qLM1C6l086EZVFmZwUH1UAckJQmEnGopKXHeeLGDZVywMw4IMREhVyQv1Q4hGWCJHdUKNgXh7uqf3nw2OrSH0WhnUczjHxJ7Sk1liW2SvkU3HZmjc4AgRVQ0QHEVyB43L1AQ8kPbe8VC6J2M80nQsCSM1pdlCyKAKI4rHVs3Rs+GeBi7ZJnvnpQ4W41SMozjCQwVe/KAhEVnWwLihLjNqI66kKiIUKvWjzk00cMKQGgaDINwWnDjLjy4HJzokhIC1ahOdznnoxkMuzaIY0c6MjUkEY43P2PiZEYcreIYdo9qkLh1HHm3GFTPGpUvzpWJBNZBFhIqBBJXjXTl+jBtLctGM7m3wzrrOBJEWqqIkGuP5MTYqrHHN3uh9YqBkgLjEueeRU4ONKnE3pKWWOdbkEx1qdpmIKkQwOqiAlIZLt6S8c1oTPkff13iBXnjSqIiQMI8KaY4w5xixGgsAS0b+TShTADStwSapeUoRIo2VDoxViSQIBwxA2z1zf0ceXA5mq/2dNWyvYXvDzwdaseDY6cw+KrUXVQ/QIdkIwAo1MUnDiel6aoW81KIzfT7bknbPeGLDGhjSuA+Sxs01QFAjcQM0xDpERufVyPSZnPdk5zqMzedQlwLnePgzKL7IxrEZO4hjoyrTVVkazc0nxw0aFFm3UiVSEWIiY42qdrq1h3v+4TUKznDNoF6R+UAbVZ01XAnUMlUNzKAYO5GKmNCbvkjPcdtrqyfrIa/30Y3MIQWzMYYsInU+rrEzqVhopg4xOWNZgOiW5P6W+UwsMI+UsZgFCUb2hSRCBmQadjYW1BnTPW20qlvKnB/jExwn7BIpM6psiETJdBw1+3xCFSSkMKwGhpmZAI5K0XtVFYEHi8TYEzOB1DAZQ7FunD1aDIC7kYKbky+ELE2Fkq2zRiDl9PlMB8xiokdviQWeZLBjwEXJdrnnJH5Q0k6bqK8AQlRtGwAZUBTvQ8SqIDJK5EggRBLpJAGBwN6ArBmbtLgy+RZpxXou1+qWjMFm7r5h59qYSmjSQh3fp7kVUVWVyE9HxAZV27P8DxSV9cW4rjgpOyKKTqwUEs3lIiKNTIII3VVFmqNMVSp1zJNdHOXAERaXy9fynYlcgtFx2Qbz08JmJ0DEjeazlhcnBaFxE3ELBeVXpjwoER6TeZ8y31yAT5nSPqXK/0xLHy1bRrAcw+ECWZX/FJREEqaFKsT1NCbc7BvV7zYwC7lvWvJtSt5t+vjPe2bDhgOASpcKPt8j+T/js8UJ4JrHdUvvwQEctgXo7r986LzmJhXQ4v8xxHQhX2RzzypFwZrIKh/XmRNAXaLXF3SyLs5YnusADpq8SzKqWXN4QzLoQLLHOZFhXHCftBUwHmuTfbfxO0BzMIAhipdlZWim3M02USJDgmKfJM4fBZdU28powhdAzzx3ajiHCp2Th84lQeEc33QqBZegiZG3Kts8B8CinjPQqPzbZe/lGL5NZ8UjmbY1xUQlIhVkB8emwmLKBOalP0bJc9EiRcXCJsaArDcaYnbI13YukAwu3s4XxqY8v5lIWyos8+KWyk9dmQfZzDsOMR1NhnspMqEJJhRBBExKChMVohwdGku/iC+hYaAJjYUpRcwBsbs+h7xL6taIgjBy3OOxFxycg9wlQmc0W+5S7NhWpvy8SAxndRTfPRnzNIxtyn6lIdyFDQMdG5UNBZ11aOBdH1aSTRzKuDxPbkXlODZNiHn5DXkJXgX1AjTVE2gi/KokA8ikyokgp/NtBydDDlFeBk3OmhaWCSrFeYoUtKn48FjcWuKqnGCE8jI3DlNNODzKYtXxbtfijTjiJVM7vm9MBl8ABfWJMlgnsuXPZahbS23FXHCqI6CgXkCuuzAKf0ljmRvFkLB1WFR2sG2h/j+RipkIbS876WUiXpPvUjIjPn3+JgqNji1ZPGhJ4u25FJzcMk+IR+UC6MMlQe/yw5ioSf+EcLJ0dHqBkrUBr0tp4kuVScsIEB9R3gTJTtR/yy+FnlSRQOMhDEkpnMcLpoUCaqRaRKXeE4wh2eFEVZU4xvUKEwlixS3NMJKWSMJEL+5HWrq13dbSWdrkSFaRKWCGm4PPMoGFAl2acrhlZofEggYSEzlONK29Y/KczBFmXl5yznNlMJVATsdWLkFPWZI1UcRwYB8NNdiMhR+cM6E3pmM3429kFImhGB+WaoHwTkhoHurDY9E6A/1/UgNPoO4EHdThnXjbMgtQZPtpspr7lGpXGajWkDeUiujYKA6VZ0emi83QtNo8U1EeymkKOhVWmyDcPDk9oZFk9i7MbCaRN7DkDJQZw7QkLi1mYDZDFiZ3AkdIhQ6pKrn7ksnLcVvOAVFM7CwdJrimJNCkXq1jCWqJ+Godna+DCI1JZjGZ356cuzEzGJyAXxLzkixDoJNlOob+o2HoK1LoXlyVQ6dwvjwRMAEK5dkaI/omTaf7J0UMl9ny5aOiirHWMh2e0yWi0n+k9dUhQRRgSXlthgsQrkwKK+iIlmYMxahyMfFNPTp1IXKgyrF9lLwpcp6a2N8pLGaYLDIqXDCOOSTOLEISYtbAowjL5GljV8uYaE9zwgH1Z83LgCdF7HhiwRLvnxsSq3G2PZJ6/oR2jZh/EOXj1WP0kCYAwlBNoVSiafKVuQDoySOCqTZ4MTPINBaLJU2xVTq1TWgZMV9MbRu1a4v94uVjIqcC2hmoy/hVdtoMpud9VB+xYLon6D5JMUNtJWmqJrlfNooUdwMs6qaJHKdF7L3S8iuRY5kk0uly0XkF5UcBbxV4k0d4EyudYQcXAGYTBJG3ugWN2KfaeWmcb2rj70ydfMKy3JIIkPIUvIkY8jIPymRpU8/nNLKTZ3cPzkAy3W9i4ZNPTWaXTDV4JsyPvK2QqRklrZFMe4M3NdlpvLbULomK2xduqYJVKeiYNDUrf0LbyKbgknK0zKbO1H7LbN6SmRATfsA83GejEO5UM6Y888wzoKe7inOQuIk3TYuz9JLbpF6X3BrjRTbiLLb82o5Tp7WUe25qcZa0WzQa4NQSMOModI5tOa6NJ7Bx1XI5FnHn4FFBKslb40yVM6vGzfQGWLlZP4BGSlYeSJv2smXaHhvyyeSx2ZiXMuepxHlutaRrZEJTy82WywrMKxCcQwccNsjYSyoQI1GSaFepqsyc2d4r/V7pGtTDjfz/A6i6r/Fkyfr/AAAAAElFTkSuQmCC" alt="لوگوی دارویار" width="96" height="96">`;
 
@@ -200,13 +218,13 @@ const uid = () => "c" + Date.now().toString(36) + Math.random().toString(36).sli
 const faNum = (n) => String(n).replace(/\d/g, (d) => "۰۱۲۳۴۵۶۷۸۹"[d]);
 
 const MEAL_NOTE = "ساعت بیداری، ناهار و شام فقط برای پیشنهاد ساعت یادآور استفاده می‌شود؛ ساعت نهایی مصرف دارو را طبق نسخه‌ی پزشک یا برچسب دارو تنظیم کنید.";
-const DEF_SET = {notifDate: true, notifMed: true, notifNext: true, leadMin: 10, repeatMin: 5, repeatCount: 2, sound: true, vibrate: true};
+const DEF_SET = {notifDate: true, notifMed: true, notifNext: true, leadMin: 10, repeatMin: 5, repeatCount: 2, sound: true, vibrate: true, darkMode: false, fontSize: "medium"};
 let st = load();
-let ui = {tab: "today", group: null, form: null, preview: [], authMode: "login", err: "", link: null, sheet: false, busy: false};
+let ui = {tab: "today", group: null, form: null, preview: [], authMode: "login", err: "", link: null, sheet: false, busy: false, fileF: "", recFile: "", addMode: "list", man: null, pickFile: ""};
 let snooze = null, syncTimer = null;
 
 function load() {
-  const d = {user: null, token: null, meds: [], logs: [], server: "", guest: false, lastSync: null};
+  const d = {user: null, token: null, meds: [], logs: [], files: [], server: "", guest: false, lastSync: null};
   let r = d;
   try { r = Object.assign(d, JSON.parse(localStorage.getItem("dy_state") || "{}")); } catch (e) { r = d; }
   r.settings = Object.assign({}, DEF_SET, r.settings || {});
@@ -239,13 +257,13 @@ async function sync(silent) {
   if (!st.token || base() === null) return;
   if (st.profileDirty && st.user) {
     try {
-      const pj = await api("/api/profile", "POST", {display_name: st.user.display_name, profile: st.user.profile, lunch_time: st.user.lunch_time || "", dinner_time: st.user.dinner_time || "", wake_time: st.user.wake_time || ""});
+      const pj = await api("/api/profile", "POST", {display_name: st.user.display_name, profile: st.user.profile, lunch_time: st.user.lunch_time || "", dinner_time: st.user.dinner_time || "", wake_time: st.user.wake_time || "", allergies: st.user.allergies || ""});
       st.user = pj.user; st.profileDirty = false;
     } catch (e) { if (e.status === 400) st.profileDirty = false; }
   }
   try {
-    const j = await api("/api/sync", "POST", {meds: st.meds, logs: st.logs});
-    st.meds = j.meds; st.logs = j.logs; st.user = j.user; st.lastSync = Date.now(); save();
+    const j = await api("/api/sync", "POST", {meds: st.meds, logs: st.logs, files: st.files});
+    st.meds = j.meds; st.logs = j.logs; st.files = j.files || st.files; st.user = j.user; st.lastSync = Date.now(); save(); NF.sync(silent);
     if (!silent) toast("همگام‌سازی با سرور انجام شد");
     render();
   } catch (e) {
@@ -273,9 +291,23 @@ function fmtRemain(m) {
   const h = Math.floor(m / 60), r = m % 60;
   return h && r ? `${faNum(h)} ساعت و ${faNum(r)} دقیقه دیگر` : h ? `${faNum(h)} ساعت دیگر` : `${faNum(r)} دقیقه دیگر`;
 }
+function dateIsoTehran(d = new Date()) { return new Intl.DateTimeFormat("en-CA", {timeZone:"Asia/Tehran", year:"numeric", month:"2-digit", day:"2-digit"}).format(d); }
+function medActiveToday(m) {
+  const today = dateIsoTehran();
+  if (m.start_date && today < m.start_date) return false;
+  if (m.start_date && +m.interval_days > 1) {
+    const days = Math.floor((Date.parse(today + "T00:00:00Z") - Date.parse(m.start_date + "T00:00:00Z")) / 86400000);
+    if (days % Math.max(1, +m.interval_days) !== 0) return false;
+  }
+  if (m.start_date && +m.duration_days > 0) {
+    const days = Math.floor((Date.parse(today + "T00:00:00Z") - Date.parse(m.start_date + "T00:00:00Z")) / 86400000);
+    if (days >= +m.duration_days) return false;
+  }
+  return true;
+}
 function nextDue() {
   const now = tehran(); let best = null;
-  for (const m of st.meds.filter((x) => !x.deleted)) {
+  for (const m of st.meds.filter((x) => !x.deleted && medActiveToday(x))) {
     for (const t of String(m.times_csv).split(",").map((s) => s.trim()).filter(Boolean)) {
       const [h, mi] = t.split(":").map(Number); if (isNaN(h) || isNaN(mi)) continue;
       let diff = (h * 60 + mi - now.min + 1440) % 1440;
@@ -288,7 +320,7 @@ function nextDue() {
 const timesOf = (m) => String(m.times_csv).split(",").map((x) => x.trim()).filter(Boolean);
 function prevElapsed() {
   const now = tehran(); let best = null;
-  for (const m of st.meds.filter((x) => !x.deleted)) for (const t of timesOf(m)) {
+  for (const m of st.meds.filter((x) => !x.deleted && medActiveToday(x))) for (const t of timesOf(m)) {
     const [h, mi] = t.split(":").map(Number); if (isNaN(h) || isNaN(mi)) continue;
     const e = (now.min - (h * 60 + mi) + 1440) % 1440; if (best === null || e < best) best = e;
   }
@@ -316,8 +348,8 @@ function pushSchedule() {
       if (!window.AndroidBridge || !window.AndroidBridge.syncSchedule) return;
       const today = tehran().date, gk = gregKey(), on = !!(st.user || st.guest);
       const done = st.logs.filter((l) => l.persian_date === today && kind(l.status) !== "snoozed").map((l) => l.med_name + "|" + l.scheduled_time + "|" + gk);
-      const meds = on ? st.meds.filter((m) => !m.deleted).map((m) => ({name: m.name, dose: m.dose, meal: m.meal_relation || "", times: timesOf(m)})) : [];
-      window.AndroidBridge.syncSchedule(JSON.stringify({settings: st.settings, meds, done}));
+      const meds = on ? st.meds.filter((m) => !m.deleted && medActiveToday(m)).map((m) => ({name: m.name, dose: m.dose, meal: m.meal_relation || "", times: timesOf(m)})) : [];
+      window.AndroidBridge.syncSchedule(JSON.stringify(DyFeatures.decorateSchedule({settings: st.settings, meds, done})));
     } catch (e) {}
   }, 400);
 }
@@ -335,37 +367,113 @@ window.nativeResume = () => {
 function setSet(k, v) {
   const R = {leadMin: [0, 120], repeatMin: [1, 60], repeatCount: [0, 10]};
   if (R[k]) v = Math.max(R[k][0], Math.min(R[k][1], Math.round(+v || 0)));
-  st.settings[k] = v; save();
+  st.settings[k] = v; applyAppearance(); save();
   const h = $("#setHint"); if (h) h.textContent = hintText();
   toast("تنظیمات ذخیره شد");
 }
 const hintText = () => { const x = st.settings; return `از ${faNum(x.leadMin)} دقیقه قبل زنگ می‌خورد، هر ${faNum(x.repeatMin)} دقیقه ${faNum(x.repeatCount)} بار تکرار می‌شود و در لحظه‌ی مصرف هم یک بار زنگ می‌خورد.`; };
+function applyAppearance(){document.documentElement.classList.toggle('dark-mode',!!st.settings.darkMode);document.documentElement.dataset.font=st.settings.fontSize||'medium';}
 
 /* ---------- منطق دارو و گزارش ---------- */
-const kind = (s) => /مصرف شد|مصرف کردم/.test(s) ? "taken" : /تعویق/.test(s) ? "snoozed" : "skipped";
+const kind = (s) => /بی‌پاسخ/.test(s) ? "unanswered" : /مصرف شد|مصرف کردم/.test(s) ? "taken" : /تعویق/.test(s) ? "snoozed" : "skipped";
 function adherence(logs) { return logs.length ? Math.round(logs.filter((l) => kind(l.status) === "taken").length / logs.length * 1000) / 10 : 100; }
-function byCategory() {
+function byCategory(logs) {
   const o = {};
-  st.logs.forEach((l) => { const c = o[l.drug_category] || (o[l.drug_category] = {t: 0, k: 0}); c.t++; c.k += kind(l.status) === "taken"; });
+  (logs || st.logs).forEach((l) => { const c = o[l.drug_category] || (o[l.drug_category] = {t: 0, k: 0}); c.t++; c.k += kind(l.status) === "taken"; });
   return o;
 }
+function supplementWarnings(m) {
+  if (!m || m.group !== "sport") return [];
+  const n = (m.name + " " + (m.drug_category || "")).toLowerCase(), out = [];
+  if (/کافئین|caffeine/.test(n)) out.push("⚠️ کافئین: نزدیک زمان خواب مصرف نشود؛ زمان و مقدار مناسب را طبق برچسب فرآورده و نظر پزشک/داروساز بررسی کنید.");
+  if (/کراتین|creatine/.test(n)) out.push("💧 کراتین: دریافت آب کافی در طول روز را فراموش نکنید. در بیماری کلیوی، بارداری یا مصرف داروهای هم‌زمان، پیش از مصرف با پزشک مشورت کنید.");
+  if (/الکترولیت|electrolyte/.test(n)) out.push("💧 الکترولیت: نیاز به مصرف به شرایط تمرین و وضعیت سلامت بستگی دارد؛ از مصرف بی‌رویه خودداری و برچسب محصول را بررسی کنید.");
+  if (/جوشان|effervescent/.test(n)) out.push("ℹ️ مکمل جوشان: مقدار سدیم و سایر ترکیبات روی برچسب را بررسی کنید؛ در صورت محدودیت نمک با داروساز مشورت کنید.");
+  if (/امگا|omega/.test(n)) out.push("ℹ️ امگا ۳: اگر داروی رقیق‌کننده خون مصرف می‌کنید یا سابقه حساسیت دارید، پیش از مصرف با پزشک/داروساز چک کنید.");
+  if (/کلسیم|calcium/.test(n)) out.push("ℹ️ کلسیم و مولتی‌ویتامین: ممکن است زمان مصرف به ترکیبات محصول وابسته باشد؛ فاصله مناسب را از داروساز بپرسید.");
+  if (m.allergy_notes) out.push("⚠️ برای این فرآورده حساسیت/واکنش قبلی ثبت شده؛ پیش از مصرف مجدد با پزشک یا داروساز بررسی کنید.");
+  if ((st.user || {}).allergies) out.push("⚠️ در پرونده حساسیت کلی ثبت شده است؛ ترکیبات این مکمل را با فهرست حساسیت‌ها تطبیق دهید و در صورت تردید از داروساز بپرسید.");
+  const calcium = st.meds.some(x => !x.deleted && /کلسیم|calcium/i.test(x.name));
+  const multi = st.meds.some(x => !x.deleted && /مولتی.?ویتامین|multivitamin/i.test(x.name));
+  if (calcium && multi && /کلسیم|calcium|مولتی.?ویتامین|multivitamin/i.test(n)) out.push("⚠️ کلسیم و مولتی‌ویتامین هم‌زمان ثبت شده‌اند؛ فاصله و زمان مناسب به ترکیبات فرآورده بستگی دارد، با داروساز چک کنید.");
+  out.push("🏅 ورزشکار حرفه‌ای: برای کاهش خطر آلودگی یا مواد ممنوعه، محصول دارای آزمون مستقل معتبر (مانند گواهی هر بچ تولید) انتخاب کنید؛ هیچ گواهی‌ای خطر را کاملاً صفر نمی‌کند.");
+  const hasTherapeutic = st.meds.some(x => !x.deleted && x.group !== "sport");
+  if (hasTherapeutic) out.push("⚠️ داروی درمانی و مکمل هم‌زمان ثبت شده‌اند؛ ترکیب آن‌ها را با پزشک یا داروساز چک کنید.");
+  return out;
+}
+function checkMissedSupplements() {
+  const sports = st.meds.filter(m => !m.deleted && m.group === "sport" && medActiveToday(m));
+  for (const m of sports) {
+    const missedThreeDays = [0,1,2].every(back => {
+      const day = tehran(new Date(Date.now() - back * 86400000)).date;
+      return !st.logs.some(l => l.med_name === m.name && l.persian_date === day && kind(l.status) === "taken");
+    });
+    if (missedThreeDays && Date.now() - (+m.missedNudgeAt || 0) > 3 * 86400000) {
+      toast("اگر ثبت مکمل چند روز از یادت رفته، اشکالی ندارد؛ هر زمان آماده بودی برنامه‌ات را به‌روز کن 🌱");
+      m.missedNudgeAt = Date.now(); m.updated_at = Date.now(); save();
+      break;
+    }
+  }
+}
 function addMed(m) {
-  st.meds.unshift(Object.assign({client_id: uid(), deleted: 0, duration_days: 30, group: "", updated_at: Date.now()}, m));
+  st.meds.unshift(Object.assign({client_id: uid(), deleted: 0, duration_days: 30, group: "", file_id: "", drug_form: "", route: "", notes: "", updated_at: Date.now()}, m));
   save(); notify(); scheduleSync();
 }
 function delMed(id) {
   const m = st.meds.find((x) => x.client_id === id); if (!m) return;
   m.deleted = 1; m.updated_at = Date.now(); save(); render(); scheduleSync();
 }
+function askNotice(title, msg) {
+  const o = document.createElement("div"); o.className = "cfm"; o.setAttribute("role", "alertdialog");
+  o.innerHTML = `<div class="cfmbox"><h3>${esc(title)}</h3><p style="white-space:pre-wrap">${esc(msg)}</p><div class="row"><button class="btn" id="ntOk">متوجه شدم</button></div></div>`;
+  document.body.appendChild(o);
+  const close = () => o.remove();
+  o.querySelector("#ntOk").onclick = close;
+  o.onclick = (e) => { if (e.target === o) close(); };
+}
+function editMed(id) {
+  const m = st.meds.find((x) => x.client_id === id); if (!m) return;
+  const o = document.createElement("div"); o.className = "cfm"; o.setAttribute("role", "dialog");
+  const meals = MEALS.includes(m.meal_relation) || !m.meal_relation ? MEALS : MEALS.concat([m.meal_relation]);
+  o.innerHTML = `<div class="cfmbox"><h3>ویرایش ${esc(m.name)}</h3>
+    <label for="emDose">دوز دارو</label><input id="emDose" value="${esc(m.dose || "")}" maxlength="60">
+    <label for="emMeal">شرایط مصرف</label><select id="emMeal">${meals.map((x) => `<option ${x === m.meal_relation ? "selected" : ""}>${esc(x)}</option>`).join("")}</select>
+    <label for="emTimes">ساعت‌ها (با ویرگول؛ مثلاً 08:00,20:00)</label><input id="emTimes" dir="ltr" value="${esc(m.times_csv || "08:00")}">
+    <label for="emStock">تعداد باقی‌مانده (خالی = ثبت نشود)</label><input id="emStock" type="number" min="0" value="${Number.isFinite(+m.stock_count) && m.stock_count !== "" && m.stock_count != null ? esc(m.stock_count) : ""}">
+    <p class="muted" id="emErr" style="color:var(--bad);margin:6px 0 0"></p>
+    <div class="row" style="margin-top:10px"><button class="btn" id="emOk">ذخیره</button><button class="btn sec" id="emNo">انصراف</button></div></div>`;
+  document.body.appendChild(o);
+  const close = () => o.remove();
+  o.querySelector("#emNo").onclick = close;
+  o.onclick = (e) => { if (e.target === o) close(); };
+  o.querySelector("#emOk").onclick = () => {
+    const times = o.querySelector("#emTimes").value.split(",").map((x) => x.trim()).filter(Boolean);
+    const ok = times.length && times.every((t) => /^([01]\d|2[0-3]):[0-5]\d$/.test(t));
+    if (!ok) { o.querySelector("#emErr").textContent = "ساعت‌ها باید به شکل 08:00 و با ویرگول جدا شوند."; return; }
+    m.dose = o.querySelector("#emDose").value.trim() || m.dose;
+    m.meal_relation = o.querySelector("#emMeal").value;
+    m.times_csv = times.join(",");
+    const stk = o.querySelector("#emStock").value.trim();
+    if (stk === "") delete m.stock_count; else m.stock_count = Math.max(0, parseInt(stk, 10) || 0);
+    m.updated_at = Date.now(); save(); render(); scheduleSync(); close(); toast("اطلاعات دارو ویرایش شد");
+  };
+}
 function logDose(action, d) {
   d = d || nextDue(); if (!d) { toast("دارویی ثبت نشده است"); return; }
+  if (action === "snooze") { const blk = DyFeatures.doses.snoozeBlock(d); if (blk) { toast(blk); return; } }
+  DyFeatures.voice.cancel();
   const status = action === "taken" ? ST_TAKEN : action === "snooze" ? ST_SNOOZE : ST_SKIP;
   const now = tehran();
+  if(action === "taken" && Number.isFinite(+d.med.stock_count)) d.med.stock_count=Math.max(0,+d.med.stock_count-1);
   st.logs.unshift({client_id: uid(), med_name: d.med.name, drug_category: d.med.drug_category, dose: d.med.dose,
     scheduled_time: d.time, actual_time: action === "skip" ? "—" : now.hm, weekday_name: now.weekday,
-    persian_date: now.date, status, meal_relation: d.med.meal_relation || ""});
+    persian_date: now.date, status, meal_relation: d.med.meal_relation || "", group: d.med.group || "", file_id: d.med.file_id || ""});
+  if (action === "taken") NF.onTaken(d.med);
   if (action === "snooze") { snooze = {id: d.med.client_id, until: Date.now() + 600000}; toast("۱۰ دقیقه‌ی دیگر دوباره یادآوری می‌کنم"); }
   else { snooze = null; toast(action === "taken" ? "ثبت شد؛ در گزارش پزشک ذخیره گردید" : "ثبت شد که مصرف نشد"); }
+  if (action === "taken" && d.med.group === "sport" && /کراتین|creatine|الکترولیت|electrolyte/i.test(d.med.name)) {
+    setTimeout(() => toast("💧 یادآوری دوستانه: در طول روز آب کافی بنوشید."), 500);
+  }
   save(); render(); scheduleSync();
 }
 window.onNotifAction = (a) => { if (st.user || st.guest) logDose(a); };
@@ -407,7 +515,7 @@ async function doAuth() {
   } catch (e) { ui.err = e.offline ? "اتصال به سرور برقرار نشد. آدرس سرور را بررسی کنید یا «ادامه بدون سرور» را بزنید." : e.message; render(); }
 }
 function guest() { st.guest = true; st.user = {username: "مهمان", profile: "general", display_name: "مهمان"}; save(); render(); }
-function logout() { st.token = null; st.user = null; st.guest = false; st.meds = []; st.logs = []; ui.sheet = false; save(); render(); }
+function logout() { NF.reset(); st.token = null; st.user = null; st.guest = false; st.meds = []; st.logs = []; st.files = []; ui.sheet = false; save(); render(); }
 /* پنجره‌ی تأیید داخل صفحه؛ تأیید بومی مرورگر در WebView اندروید بدون WebChromeClient کار نمی‌کند */
 function askConfirm(title, msg, okLabel, fn) {
   const o = document.createElement("div"); o.className = "cfm"; o.setAttribute("role", "alertdialog");
@@ -444,55 +552,132 @@ function viewAuth() {
 }
 
 /* ---------- تب ۱: امروز ---------- */
-const GM = {chronic: {ic: "🩺", bg: "#E3EEFF"}, sport: {ic: "💪", bg: "#DDF5EC"}, beauty: {ic: "✨", bg: "#FCE7F0"}};
+/* ---------- پرونده‌های درمانی (v3) ---------- */
+const activeFiles = () => (st.files || []).filter((f) => !f.deleted);
+const fileOf = (id) => (st.files || []).find((f) => f.client_id === id);
+const fileTitle = (id) => { const f = fileOf(id); return f ? f.title : ""; };
+const inFile = (x, fid) => !fid ? true : fid === "_none" ? !x.file_id : x.file_id === fid;
+function fileLabel(fid) { return !fid ? "همه‌ی پرونده‌ها" : fid === "_none" ? "بدون پرونده" : fileTitle(fid) || "پرونده‌ی حذف‌شده"; }
+function addFile(title, icon, note) {
+  title = String(title || "").trim(); if (!title) { toast("نام پرونده را بنویسید"); return null; }
+  if (activeFiles().some((f) => f.title === title)) { toast("پرونده‌ای با این نام دارید"); return null; }
+  const f = {client_id: uid(), title: title.slice(0, 60), icon: icon || "📁", note: String(note || "").slice(0, 300), deleted: 0, updated_at: Date.now()};
+  st.files.push(f); save(); scheduleSync(); return f;
+}
+function createFileFromForm() {
+  const f = addFile($("#nfTitle").value, ui.nfIcon, $("#nfNote").value);
+  if (f) { ui.nfIcon = null; render(); toast("پرونده‌ی «" + f.title + "» ساخته شد"); }
+}
+function presetFile(i) { const p = FILE_PRESETS[i]; $("#nfTitle").value = p[1] === "سایر" ? "" : p[1]; ui.nfIcon = p[0]; $("#nfTitle").focus(); }
+function editFile(id) { ui.editFile = ui.editFile === id ? null : id; render(); }
+function delFile(id) {
+  const f = fileOf(id); if (!f) return;
+  const n = st.meds.filter((m) => !m.deleted && m.file_id === id).length;
+  askConfirm("حذف پرونده‌ی «" + f.title + "»", n ? "این پرونده حذف می‌شود؛ " + faNum(n) + " داروی آن حذف نمی‌شود و به «بدون پرونده» منتقل می‌شود. سوابق مصرف باقی می‌ماند." : "این پرونده حذف می‌شود. سوابق مصرف باقی می‌ماند.", "بله، حذف شود", () => {
+    const now = Date.now(); f.deleted = 1; f.updated_at = now;
+    st.meds.forEach((m) => { if (m.file_id === id) { m.file_id = ""; m.updated_at = now; } });
+    if (ui.fileF === id) ui.fileF = ""; if (ui.recFile === id) ui.recFile = "";
+    save(); render(); scheduleSync();
+  });
+}
+function saveFileEdit(id) {
+  const f = fileOf(id); if (!f) return;
+  const t = ($("#efTitle").value || "").trim(); if (!t) { toast("نام پرونده را بنویسید"); return; }
+  f.title = t.slice(0, 60); f.note = ($("#efNote").value || "").slice(0, 300); f.updated_at = Date.now();
+  ui.editFile = null; save(); render(); scheduleSync(); toast("پرونده ذخیره شد");
+}
+function fileSelect(id, cur, onch) {
+  const fs = activeFiles();
+  return `<label for="${id}">پرونده‌ی درمانی</label><select id="${id}" onchange="${onch}"><option value="">— بدون پرونده —</option>${fs.map((f) => `<option value="${esc(f.client_id)}" ${cur === f.client_id ? "selected" : ""}>${esc(f.icon)} ${esc(f.title)}</option>`).join("")}</select>${fs.length ? "" : `<p class="muted" style="margin:4px 0 0">برای جدا کردن داروهای هر بیماری، از تب «پرونده‌ها» پرونده بسازید.</p>`}`;
+}
+function fileChips(cur, setter, withNone) {
+  const fs = activeFiles(); if (!fs.length) return "";
+  const hasNone = withNone && st.meds.some((m) => !m.deleted && !m.file_id);
+  const chip = (id, t) => `<button class="pill ${cur === id ? "on" : ""}" onclick="${setter}('${esc(id)}')">${t}</button>`;
+  return `<div class="fchips" role="tablist" aria-label="پرونده‌ها">${chip("", "همه")}${fs.map((f) => chip(f.client_id, esc(f.icon) + " " + esc(f.title))).join("")}${hasNone ? chip("_none", "بدون پرونده") : ""}</div>`;
+}
+function setFileF(id) { ui.fileF = id; render(); }
+function setRecFile(id) { ui.recFile = id; render(); }
+function goFile(tab, id) { if (tab === "today") ui.fileF = id; else if (tab === "record") ui.recFile = id; else if (tab === "add") { ui.pickFile = id; if (ui.form) ui.form.file_id = id; if (ui.man) ui.man.file_id = id; } ui.tab = tab; window.scrollTo(0, 0); render(); }
+
+const GM = {chronic: {ic: "🩺", bg: "#E3EEFF"}, medicine: {ic: "💊", bg: "#E9E7FF"}, sport: {ic: "💪", bg: "#DDF5EC"}, beauty: {ic: "✨", bg: "#FCE7F0"}};
 const gm = (g) => GM[g] || {ic: "💊", bg: "#EEF1F5"};
+function reviewDue(m) {
+  if (!m.start_date || !m.review_after_days) return false;
+  const due = new Date(Date.parse(m.start_date + "T00:00:00Z") + (+m.review_after_days * 86400000)).toISOString().slice(0,10);
+  return dateIsoTehran() >= due;
+}
 function medCard(m) {
   const g = gm(m.group), times = timesOf(m).map((t) => `<span class="tag">⏰ ${esc(t)}</span>`).join("");
-  return `<div class="card med"><div class="mi" style="background:${g.bg}">${g.ic}</div><div class="t"><b>${esc(m.name)}</b> <span class="muted">${esc(m.dose)}</span><br><span class="muted">${esc(m.drug_category)}</span>
-  <div class="tags">${times}<span class="tag">🍽 ${esc(m.meal_relation || "—")}</span></div></div>
-  <button class="x" onclick="delMed('${esc(m.client_id)}')" aria-label="حذف ${esc(m.name)}">🗑</button></div>`;
+  const stock = Number.isFinite(+m.stock_count) ? `<span class="tag ${+m.stock_count<=5?'stock-low':''}">📦 موجودی: ${faNum(m.stock_count)}</span>` : '';
+  return `<div class="card med"><div class="mi" style="background:${g.bg}">${g.ic}</div><div class="t"><b>${esc(DyFeatures.alias.display(m))}</b> <span class="muted">${esc(m.dose)}</span><br><span class="muted">${esc(m.drug_category)}</span>
+  <div class="tags">${times}<span class="tag">🍽 ${esc(m.meal_relation || "—")}</span>${m.interval_days>1?`<span class="tag">هر ${faNum(m.interval_days)} روز</span>`:""}${m.drug_form ? `<span class="tag">💊 ${esc(m.drug_form)}</span>` : ""}${m.route ? `<span class="tag">📍 ${esc(m.route)}</span>` : ""}${fileTitle(m.file_id) ? `<span class="tag f">🗂 ${esc(fileTitle(m.file_id))}</span>` : ""}${stock}${DyFeatures.medExtrasHTML(m)}</div>
+  ${m.notes ? `<div class="muted" style="margin-top:4px">📝 ${esc(m.notes)}</div>` : ""}
+  ${m.group === "sport" ? `<p class="muted">💧 یادآوری: آب کافی در طول روز، به‌ویژه کنار کراتین/الکترولیت</p>${supplementWarnings(m).map(w=>`<p class="muted">${esc(w)}</p>`).join("")}` : ""}
+  ${m.review_after_days>0?`<p class="muted">🔎 ${reviewDue(m)?"زمان بازبینی این برنامه رسیده است؛ با پزشک/داروساز مرور کنید.":`یادآوری بازبینی پس از ${faNum(m.review_after_days)} روز از شروع مصرف`}</p>`:""}</div>
+  <button class="x" onclick="editMed('${esc(m.client_id)}')" aria-label="ویرایش ${esc(m.name)}">✏️</button><button class="x" onclick="delMed('${esc(m.client_id)}')" aria-label="حذف ${esc(m.name)}">🗑</button></div>`;
 }
 function viewToday() {
-  const all = st.meds.filter((m) => !m.deleted), f = ui.filter, meds = f ? all.filter((m) => m.group === f) : all;
+  const all = st.meds.filter((m) => !m.deleted), f = ui.filter, meds = all.filter((m) => (!f || m.group === f) && inFile(m, ui.fileF));
+  const q = (ui.medSearch || "").trim().toLocaleLowerCase("fa");
+  const searched = q ? meds.filter(m => (m.name+" "+m.drug_category).toLocaleLowerCase("fa").includes(q)) : meds;
   const now = tehran(), h = heroState(), pct = adherence(st.logs);
   const takenToday = st.logs.filter((l) => l.persian_date === now.date && kind(l.status) === "taken").length;
   const hero = h ? `<div class="bar hero"><div class="hl">داروی بعدی</div>
-    <div class="hname">💊 ${esc(h.d.med.name)}</div><div class="hsub">${esc(h.d.med.dose)} · 🍽 ${esc(h.d.med.meal_relation || "—")}</div>
+    <div class="hname">💊 ${esc(DyFeatures.alias.display(h.d.med))}</div><div class="hsub">${esc(h.d.med.dose)} · 🍽 ${esc(h.d.med.meal_relation || "—")}</div>
     <div class="hcount" id="hcount">${h.big}</div><div class="hlbl" id="hlbl">${h.lbl}</div>
     <div class="meter"><i id="hmeter" style="width:${h.pct}%"></i></div>
-    <div class="grid3"><button class="btn bar-b" onclick="logDose('taken')"><b>✅</b><span>مصرف کردم</span></button><button class="btn bar-b" onclick="logDose('snooze')"><b>⏳</b><span>۱۰ دقیقه بعد</span></button><button class="btn bar-b" onclick="logDose('skip')"><b>❌</b><span>نخوردم</span></button></div></div>`
+    <div class="grid3"><button class="btn bar-b" onclick="logDose('taken')"><b>✅</b><span>مصرف کردم</span></button><button class="btn bar-b${DyFeatures.doses.disabledClass(h.d)}" onclick="logDose('snooze')"><b>⏳</b><span>۱۰ دقیقه بعد</span></button><button class="btn bar-b" onclick="logDose('skip')"><b>❌</b><span>نخوردم</span></button></div></div>`
     : `<div class="bar hero"><div class="hname">💊 هنوز دارویی ثبت نشده</div><div class="hsub">از تب «ثبت دارو» اولین دارو را اضافه کنید</div></div>`;
   const tiles = [["", "🗂", "همه"]].concat(Object.entries(GROUPS).map(([k, v]) => [k, gm(k).ic, v])).map(([k, ic, t]) =>
     `<button class="tile ${(f || "") === k ? "on" : ""}" style="--tc:${k ? gm(k).bg : "#E9EEF4"}" onclick="ui.filter=${k ? `'${k}'` : "null"};render()"><span>${ic}</span>${t}</button>`).join("");
   return `<div class="hello"><b>سلام ${esc((st.user.display_name || st.user.username).slice(0, 14))} 👋</b><span>${esc(now.weekday)} ${faNum(now.date)}</span></div>
   ${hero}
+  ${DyFeatures.unanswered.cardHTML()}
   <div class="stats"><div class="stat s1"><b>${faNum(pct)}٪</b><span>پایبندی</span></div><div class="stat s2"><b>${faNum(all.length)}</b><span>داروی فعال</span></div><div class="stat s3"><b>${faNum(takenToday)}</b><span>مصرف امروز</span></div></div>
   <div class="tiles">${tiles}</div>
+  ${fileChips(ui.fileF, "setFileF", true)}
+  ${NF.todayCards()}
   <h2 style="font-size:16px;margin:4px 2px 8px">داروهای فعال (${faNum(meds.length)})</h2>
-  ${meds.length ? meds.map(medCard).join("") : `<div class="card muted">دارویی در این بخش نیست. از تب «ثبت دارو» اضافه کنید.</div>`}
+  <input type="search" placeholder="🔎 جستجو در داروهای فعال..." value="${esc(ui.medSearch||"")}" oninput="ui.medSearch=this.value;const q=this.value.toLocaleLowerCase('fa');document.querySelectorAll('.med').forEach(el=>el.style.display=el.innerText.toLocaleLowerCase('fa').includes(q)?'':'none')" style="margin:8px 0;width:100%">
+  ${searched.length ? searched.map(medCard).join("") : `<div class="card muted">دارویی در این بخش نیست. از تب «ثبت دارو» اضافه کنید.</div>`}
+  ${all.filter(m=>Number.isFinite(+m.stock_count)&&+m.stock_count<=5).map(m=>`<div class="card stock-alert">🔴 موجودی ${esc(m.name)} رو به اتمام است؛ فقط ${faNum(m.stock_count)} عدد باقی مانده.</div>`).join("")}
   <button class="btn sec noprint" style="width:100%" onclick="seedDemo()">⚡ درج داده‌ی نمونه‌ی ۷ روزه (دمو)</button>`;
 }
 
 /* ---------- تب ۲: ثبت دارو ---------- */
+function dGroupIsSport(g) { return g === "sport"; }
 function viewAdd() {
   const g = ui.group || PROFILE_GROUP[(st.user || {}).profile] || "chronic";
   const list = DRUGS.filter((d) => d.group === g);
-  const f = ui.form || (ui.form = {drug: "", dose: "", meal: MEALS[2], freq: 1, times: ["08:00"], days: 30});
+  const f = ui.form || (ui.form = {drug: "", dose: "", meal: MEALS[2], freq: 1, times: ["08:00"], days: 0, start: dateIsoTehran(), interval: 1, exercise: "", allergy: "", review: 90, file_id: ui.pickFile || ""});
   const prev = ui.preview.length ? `<div class="card"><h2>نتیجه‌ی استخراج (قبل از ثبت بررسی کنید)</h2>${ui.preview.map((m) =>
     `<div class="muted">💊 <b>${esc(m.name)}</b> — ${esc(m.dose)} — ⏰ ${esc(m.times_csv)} — 🍽 ${esc(m.meal_relation)}${m.known ? "" : " (ناشناخته در بانک)"}</div>`).join("")}
     <div class="row" style="margin-top:8px"><button class="btn" onclick="addPreview()">افزودن همه</button><button class="btn sec" onclick="ui.preview=[];render()">لغو</button></div></div>` : "";
   const link = ui.link ? `<div class="card" style="background:#E4F4F1"><b>کد اتصال: <span dir="ltr" style="font-size:22px;letter-spacing:3px">${esc(ui.link.code)}</span></b><br>
     <span class="muted">در بله${ui.link.bot_username ? " به @" + esc(ui.link.bot_username) : " به بات دارویار"} پیام <span dir="ltr">/link ${esc(ui.link.code)}</span> را بفرستید؛ سپس متن نسخه را فوروارد کنید. داروها در همگام‌سازی بعدی اینجا ظاهر می‌شوند.</span></div>` : "";
-  return `<div class="card"><h2>ثبت دارو از فهرست</h2>
+  const seg = `<div class="seg" role="tablist"><button class="${ui.addMode !== "manual" ? "on" : ""}" onclick="ui.addMode='list';render()">📚 از فهرست</button><button class="${ui.addMode === "manual" ? "on" : ""}" onclick="openManual()">✍️ ثبت دستی</button></div>`;
+  if (ui.addMode === "manual") return seg + viewManual();
+  return seg + `<div class="card"><h2>ثبت دارو از فهرست</h2>
    <div class="chips" role="tablist">${Object.entries(GROUPS).map(([k, v]) => `<button class="pill ${k === g ? "on" : ""}" onclick="ui.group='${k}';ui.form=null;render()">${v}</button>`).join("")}</div>
    <label for="fd">نام دارو / مکمل</label><select id="fd" onchange="pickDrug(this.value)"><option value="">— انتخاب کنید —</option>${list.map((d) => `<option value="${esc(d.name_fa)}" ${f.drug === d.name_fa ? "selected" : ""}>${esc(d.name_fa)} (${esc(d.name_en)})</option>`).join("")}</select>
+   <button class="btn sec" type="button" onclick="ui.customDrug=!ui.customDrug;render()" style="margin-top:8px">✍️ داروی دلخواه من</button>
+   ${ui.customDrug ? `<label>نام دارو</label><input id="customName" placeholder="نام دارو را وارد کنید"><label>دوز / مقدار</label><input id="customDose" placeholder="دوز طبق نسخه"><button class="btn" onclick="addCustomMed()">افزودن داروی دلخواه</button>` : ''}
    <label for="fo">دوز</label><input id="fo" value="${esc(f.dose)}" oninput="ui.form.dose=this.value">
    <p class="muted" style="margin:4px 0 0">دوز و شرط پیش‌فرض فقط برای تسریع ثبت است؛ مقدار نهایی را طبق نسخه‌ی پزشک یا برچسب دارو وارد کنید.</p>
    <label for="fm">شرایط مصرف</label><select id="fm" onchange="ui.form.meal=this.value">${MEALS.map((m) => `<option ${m === f.meal ? "selected" : ""}>${esc(m)}</option>`).join("")}</select>
    <label for="ff">دفعات مصرف در روز</label><select id="ff" onchange="setFreq(+this.value)">${[1, 2, 3, 4].map((n) => `<option value="${n}" ${n === f.freq ? "selected" : ""}>${faNum(n)} بار</option>`).join("")}</select>
    <div class="row" style="margin-top:8px">${f.times.map((t, i) => `<input type="time" value="${esc(t)}" style="width:110px" aria-label="ساعت ${i + 1}" onfocus="ui.form.slot=${i}" onchange="ui.form.times[${i}]=this.value">`).join("")}</div>
    ${mealHint()}
-   <label for="fdays">مدت مصرف (روز)</label><input id="fdays" type="number" min="1" max="365" value="${f.days}" oninput="ui.form.days=+this.value">
+   <label for="fstart">تاریخ شروع مصرف</label><input id="fstart" type="date" value="${esc(f.start || dateIsoTehran())}" oninput="ui.form.start=this.value">
+   <label for="finterval">الگوی فاصله مصرف</label><select id="finterval" onchange="ui.form.interval=+this.value"><option value="1" ${+f.interval===1?"selected":""}>هر روز</option><option value="2" ${+f.interval===2?"selected":""}>یک روز در میان</option><option value="3" ${+f.interval===3?"selected":""}>هر ۳ روز</option><option value="7" ${+f.interval===7?"selected":""}>هفتگی</option></select>
+   ${DyFeatures.criticalCheckboxHTML(f)}
+   <label for="fdays">مدت مصرف (روز؛ صفر = بدون پایان خودکار)</label><input id="fdays" type="number" min="0" max="3650" value="${f.days}" oninput="ui.form.days=+this.value">
+   <label for="stockCount">تعداد قرص / واحد موجود (اختیاری)</label><input id="stockCount" type="number" min="0" placeholder="مثلاً ۲۰" oninput="ui.form.stock=this.value">
+   ${fileSelect("ffile", ui.form.file_id || "", "ui.form.file_id=this.value")}
+   <label for="freview">یادآوری بازبینی پس از چند روز (صفر = غیرفعال)</label><input id="freview" type="number" min="0" max="3650" value="${f.review||90}" oninput="ui.form.review=+this.value">
+   ${dGroupIsSport(g) ? `<label for="fexercise">ساعت تمرین (برای پیشنهاد زمان یادآور)</label><input id="fexercise" type="time" value="${esc(f.exercise||"")}" oninput="ui.form.exercise=this.value"><p class="muted">ساعت مکمل با توجه به زمان تمرین پیشنهاد می‌شود؛ برنامه، دوز یا زمان تجویزشده را خودکار تغییر نمی‌دهد.</p>` : ""}
+   <label for="fallergy">حساسیت یا واکنش قبلی به این دارو/مکمل</label><textarea id="fallergy" placeholder="مثلاً نام ماده حساسیت‌زا یا شرح واکنش (اختیاری)" oninput="ui.form.allergy=this.value">${esc(f.allergy||"")}</textarea>
    <button class="btn" style="width:100%;margin-top:12px" onclick="submitMed()">افزودن به برنامه</button></div>
   <div class="card"><h2>دریافت خودکار نسخه‌ی الکترونیک</h2>
    <p class="muted" style="margin-top:0">متن نسخه یا پیامک الکترونیک را اینجا بچسبانید (هر خط یک دارو) یا فایل متنی (.txt) انتخاب کنید.</p>
@@ -503,6 +688,40 @@ function viewAdd() {
   ${prev}
   <div class="card"><h2>اتصال به بات بله</h2><p class="muted" style="margin-top:0">نسخه را در بله به بات دارویار فوروارد کنید تا خودکار در برنامه ثبت شود.</p>
    <button class="btn" onclick="getLink()">دریافت کد اتصال</button></div>${link}`;
+}
+function openManual() {
+  ui.addMode = "manual";
+  if (!ui.man) ui.man = {name: "", drug_form: FORMS[0], category: "", dose: "", route: ROUTES[0], meal: MEALS[3], freq: 1, times: ["08:00"], days: 30, notes: "", file_id: ui.pickFile || "", group: PROFILE_GROUP[(st.user || {}).profile] || "chronic"};
+  render();
+}
+function viewManual() {
+  const m = ui.man || (openManual(), ui.man);
+  const opt = (arr, cur) => arr.map((x) => `<option ${x === cur ? "selected" : ""}>${esc(x)}</option>`).join("");
+  return `<div class="card"><h2>ثبت دستی دارو یا مکمل</h2>
+   <p class="muted" style="margin-top:0">اگر داروی شما در فهرست نیست، مشخصات آن را خودتان بنویسید. همه‌ی مقدارها را طبق نسخه‌ی پزشک یا برچسب دارو وارد کنید.</p>
+   <label for="mn">نام دارو *</label><input id="mn" maxlength="100" value="${esc(m.name)}" oninput="ui.man.name=this.value" placeholder="مثلاً: متفورمین">
+   <label for="mf">نوع دارو (شکل دارویی)</label><select id="mf" onchange="ui.man.drug_form=this.value">${opt(FORMS, m.drug_form)}</select>
+   <label for="mc">کاربرد / دسته (اختیاری)</label><input id="mc" maxlength="120" value="${esc(m.category)}" oninput="ui.man.category=this.value" placeholder="مثلاً: کنترل فشار خون">
+   <label for="md">دوز *</label><input id="md" maxlength="60" value="${esc(m.dose)}" oninput="ui.man.dose=this.value" placeholder="مثلاً: ۵۰۰ میلی‌گرم یا ۲ قطره">
+   <label for="mr">نحوه‌ی مصرف</label><select id="mr" onchange="ui.man.route=this.value">${opt(ROUTES, m.route)}</select>
+   <label for="mm">شرایط مصرف</label><select id="mm" onchange="ui.man.meal=this.value">${opt(MEALS, m.meal)}</select>
+   <label for="mq">دفعات مصرف در روز</label><select id="mq" onchange="setManFreq(+this.value)">${[1, 2, 3, 4].map((n) => `<option value="${n}" ${n === m.freq ? "selected" : ""}>${faNum(n)} بار</option>`).join("")}</select>
+   <div class="row" style="margin-top:8px">${m.times.map((t, i) => `<input type="time" value="${esc(t)}" style="width:110px" aria-label="ساعت ${i + 1}" onchange="ui.man.times[${i}]=this.value">`).join("")}</div>
+   <label for="mdays">مدت مصرف (روز)</label><input id="mdays" type="number" min="1" max="365" value="${m.days}" oninput="ui.man.days=+this.value">
+   <label for="mg">بخش</label><select id="mg" onchange="ui.man.group=this.value">${Object.entries(GROUPS).map(([k, v]) => `<option value="${k}" ${m.group === k ? "selected" : ""}>${v}</option>`).join("")}</select>
+   ${fileSelect("mfile", m.file_id, "ui.man.file_id=this.value")}
+   <label for="mnotes">توضیحات / نکته‌ی مصرف (اختیاری)</label><textarea id="mnotes" maxlength="300" rows="2" oninput="ui.man.notes=this.value" placeholder="مثلاً: بعد از مصرف مقدار کافی آب بنوشید">${esc(m.notes)}</textarea>
+   <button class="btn" style="width:100%;margin-top:12px" onclick="submitManual()">افزودن به برنامه</button></div>`;
+}
+function setManFreq(n) { ui.man.freq = n; ui.man.times = DEFAULT_TIMES[n].slice(); render(); }
+function submitManual() {
+  const m = ui.man; if (!m) return;
+  if (!m.name.trim()) { toast("نام دارو را بنویسید"); return; }
+  if (!m.dose.trim()) { toast("دوز را وارد کنید"); return; }
+  if (m.times.some((t) => !t)) { toast("ساعت‌های مصرف را کامل کنید"); return; }
+  addMed({name: m.name.trim(), drug_category: m.category.trim() || m.drug_form, group: m.group, dose: m.dose.trim(), times_csv: m.times.join(","),
+    meal_relation: m.meal, duration_days: m.days || 30, drug_form: m.drug_form, route: m.route, notes: m.notes.trim(), file_id: m.file_id || ""});
+  ui.man = null; ui.pickFile = ""; ui.addMode = "list"; ui.tab = "today"; ui.fileF = ""; render(); toast("دارو اضافه شد؛ نوار اعلان به‌روز شد");
 }
 function mealHint() {
   const u = st.user || {};
@@ -518,15 +737,25 @@ function useMeal(t) {
 function pickDrug(name) {
   const d = DRUGS.find((x) => x.name_fa === name); if (!d) { ui.form.drug = ""; return; }
   const times = d.times.split(",").map((s) => s.trim());
-  ui.form = {drug: name, dose: d.dose, meal: d.meal_relation, freq: times.length, times, days: d.duration_days}; render();
+  ui.form = Object.assign(ui.form || {}, {drug: name, dose: d.dose, meal: d.meal_relation, freq: times.length, times, days: 0, start: dateIsoTehran(), interval: 1, exercise: "", allergy: "", review: 90}); render();
 }
 function setFreq(n) { ui.form.freq = n; ui.form.times = DEFAULT_TIMES[n].slice(); render(); }
 function submitMed() {
   const f = ui.form, d = DRUGS.find((x) => x.name_fa === f.drug);
   if (!d) { toast("ابتدا دارو را از فهرست انتخاب کنید"); return; }
   if (!f.dose.trim()) { toast("دوز را وارد کنید"); return; }
-  addMed({name: d.name_fa, drug_category: d.category, group: d.group, dose: f.dose.trim(), times_csv: f.times.join(","), meal_relation: f.meal, duration_days: f.days || 30});
-  ui.form = null; ui.tab = "today"; render(); toast("دارو اضافه شد؛ نوار اعلان به‌روز شد");
+  let times = f.times.slice();
+  if (d.group === "sport" && f.exercise) {
+    const n = f.exercise.split(":").map(Number), start = n[0] * 60 + n[1];
+    const key = /کافئین|caffeine/i.test(d.name_fa + " " + d.name_en);
+    if (!key) times = [f.exercise];
+  }
+  addMed({name: d.name_fa, drug_category: d.category, group: d.group, dose: f.dose.trim(), times_csv: times.join(","), meal_relation: f.meal,
+    duration_days: Math.max(0, +f.days || 0), start_date: f.start || dateIsoTehran(), interval_days: +f.interval || 1,
+    exercise_time: f.exercise || "", allergy_notes: f.allergy || "", review_after_days: Math.max(0, +f.review || 0), file_id: f.file_id || "", critical: !!f.critical,
+    ...(f.stock!==undefined&&f.stock!==""?{stock_count:Math.max(0,parseInt(f.stock,10)||0)}:{})});
+  const warning = supplementWarnings(st.meds[0]); if (warning.length) setTimeout(() => askNotice("نکته‌های مصرف (اطلاع‌رسانی)", warning.join("\n\n")), 150);
+  ui.form = null; ui.pickFile = ""; ui.tab = "today"; render(); toast("دارو اضافه شد؛ نوار اعلان به‌روز شد");
 }
 async function parseRx() {
   const text = ($("#rx").value || "").trim(); if (!text) { toast("متن نسخه خالی است"); return; }
@@ -537,18 +766,68 @@ function loadFile(inp) {
   const f = inp.files[0]; if (!f) return;
   const r = new FileReader(); r.onload = () => { $("#rx").value = String(r.result).slice(0, 20000); }; r.readAsText(f, "utf-8");
 }
+function addCustomMed() {
+ const name=(document.getElementById('customName')||{}).value?.trim(), dose=(document.getElementById('customDose')||{}).value?.trim();
+ if(!name||!dose){toast('نام دارو و دوز را وارد کنید');return;}
+ addMed({name,dose,drug_category:'داروی دلخواه',group:'custom',meal_relation:'طبق دستور پزشک یا برچسب دارو',times_csv:'08:00'}); ui.customDrug=false; ui.tab='today'; render(); toast('داروی دلخواه اضافه شد');
+}
 function addPreview() { ui.preview.forEach((m) => addMed({name: m.name, drug_category: m.drug_category, group: m.group, dose: m.dose, times_csv: m.times_csv, meal_relation: m.meal_relation, duration_days: m.duration_days})); const n = ui.preview.length; ui.preview = []; ui.tab = "today"; render(); toast(n + " دارو اضافه شد"); }
 async function getLink() { try { ui.link = await api("/api/link_code", "POST"); render(); } catch (e) { toast(st.token ? "سرور در دسترس نیست" : "اتصال به بات فقط با حساب کاربری روی سرور ممکن است"); } }
 
+/* ---------- تب پرونده‌ها (v3): پرونده‌ی جداگانه برای هر بیماری ---------- */
+function viewFiles() {
+  const fs = activeFiles(), meds = st.meds.filter((m) => !m.deleted);
+  const card = (f) => {
+    const n = meds.filter((m) => m.file_id === f.client_id).length, lg = st.logs.filter((l) => l.file_id === f.client_id);
+    const ed = ui.editFile === f.client_id;
+    return `<div class="card"><div class="fcard"><div class="fi">${esc(f.icon || "📁")}</div><div class="t"><b>${esc(f.title)}</b>
+      <div class="muted">${faNum(n)} داروی فعال${lg.length ? " · پایبندی " + faNum(adherence(lg)) + "٪" : ""}</div>${f.note ? `<div class="muted">📝 ${esc(f.note)}</div>` : ""}
+      <div class="acts"><button class="btn small" onclick="goFile('add','${esc(f.client_id)}')">+ افزودن دارو</button><button class="btn sec small" onclick="goFile('today','${esc(f.client_id)}')">داروها</button><button class="btn sec small" onclick="goFile('record','${esc(f.client_id)}')">گزارش</button><button class="btn sec small" onclick="editFile('${esc(f.client_id)}')">✏️ ویرایش</button><button class="btn sec small" onclick="delFile('${esc(f.client_id)}')" aria-label="حذف پرونده">🗑</button></div></div></div>
+      ${ed ? `<label for="efTitle">نام پرونده</label><input id="efTitle" maxlength="60" value="${esc(f.title)}"><label for="efNote">توضیح (اختیاری)</label><input id="efNote" maxlength="300" value="${esc(f.note || "")}"><button class="btn" style="width:100%;margin-top:8px" onclick="saveFileEdit('${esc(f.client_id)}')">ذخیره</button>` : ""}</div>`;
+  };
+  const loose = meds.filter((m) => !m.file_id).length;
+  return `<div class="card"><h2>🗂 پرونده‌ی جدید</h2>
+   <p class="muted" style="margin-top:0">برای هر بیماری یک پرونده‌ی جدا بسازید (مثلاً فشار خون، چربی، دیابت) تا داروها و گزارش مصرف هر کدام جداگانه دیده شود.</p>
+   <div class="chips">${FILE_PRESETS.map((p, i) => `<button class="pill" onclick="presetFile(${i})">${p[0]} ${p[1]}</button>`).join("")}</div>
+   <label for="nfTitle">نام پرونده *</label><input id="nfTitle" maxlength="60" placeholder="مثلاً: فشار خون">
+   <label for="nfNote">توضیح (اختیاری)</label><input id="nfNote" maxlength="300" placeholder="مثلاً: پزشک معالج، تاریخ شروع">
+   <button class="btn" style="width:100%;margin-top:10px" onclick="createFileFromForm()">ساخت پرونده</button></div>
+  <h2 style="font-size:16px;margin:4px 2px 8px">پرونده‌های من (${faNum(fs.length)})</h2>
+  ${fs.length ? fs.map(card).join("") : `<div class="card muted">هنوز پرونده‌ای نساخته‌اید.</div>`}
+  ${fs.length && loose ? `<div class="card"><b>بدون پرونده</b><div class="muted">${faNum(loose)} دارو هنوز در هیچ پرونده‌ای نیست.</div><div class="acts" style="margin-top:8px"><button class="btn sec small" onclick="goFile('today','_none')">نمایش</button></div></div>` : ""}`;
+}
+
 /* ---------- تب ۳: پرونده‌ی بالینی ---------- */
+function streakInfo() {
+ const good=new Set();
+ const byDay={}; st.logs.forEach(l=>(byDay[l.persian_date]||(byDay[l.persian_date]=[])).push(l));
+ Object.entries(byDay).forEach(([date,items])=>{if(items.length&&items.every(l=>kind(l.status)==='taken'))good.add(date);});
+ let n=0; for(let i=0;i<366;i++){const k=tehran(new Date(Date.now()-i*86400000)).date;if(good.has(k))n++;else if(i>0)break;}
+ return n;
+}
+function chartLogs(days) {
+ const labels=[]; for(let i=days-1;i>=0;i--){const d=new Date(Date.now()-i*86400000);labels.push(tehran(d).date);}
+ return labels.map((date,i)=>{const a=st.logs.filter(l=>l.persian_date===date);return {label:date.split('/').slice(-1)[0],pct:a.length?Math.round(a.filter(l=>kind(l.status)==='taken').length/a.length*100):0,total:a.length};});
+}
+function copyDoctorSummary(){
+ const logs=st.logs.slice(0,100), lines=['خلاصه پرونده دارویار','تاریخ تهیه: '+tehran().date,'','داروهای فعال:',...st.meds.filter(m=>!m.deleted).map(m=>`- ${m.name} | ${m.dose} | ${timesOf(m).join(', ')} | ${m.meal_relation||'—'}`),'','سوابق اخیر:',...logs.map(l=>`- ${l.persian_date} ${l.scheduled_time} | ${l.med_name} ${l.dose} | ${l.status}`)];
+ const value=lines.join('\n'); if(navigator.clipboard?.writeText) navigator.clipboard.writeText(value).then(()=>toast('خلاصه پرونده کپی شد')).catch(()=>fallbackCopy(value)); else fallbackCopy(value);
+}
+function fallbackCopy(v){const t=document.createElement('textarea');t.value=v;document.body.appendChild(t);t.select();try{document.execCommand('copy');toast('خلاصه پرونده کپی شد');}catch(e){toast('کپی خودکار در این دستگاه پشتیبانی نشد');}t.remove();}
 function viewRecord() {
-  const pct = adherence(st.logs), C = 2 * Math.PI * 52, cats = byCategory();
-  const rows = st.logs.map((l, i) => `<tr class="s-${kind(l.status)}"><td>${faNum(i + 1)}</td><td><b>${esc(l.med_name)}</b><br><span class="muted">${esc(l.dose)}</span></td><td>${esc(l.drug_category)}</td><td>${esc(l.meal_relation || "—")}</td><td>${esc(l.weekday_name)}<br>${esc(l.persian_date)}</td><td>${esc(l.scheduled_time)}</td><td>${esc(l.actual_time)}</td><td>${esc(l.status)}</td></tr>`).join("");
-  return `<div class="card"><h2>شاخص پایبندی به درمان (Adherence)</h2><div class="ringwrap">
+  const logs = st.logs.filter((l) => inFile(l, ui.recFile));
+  const pct = adherence(logs), C = 2 * Math.PI * 52, cats = byCategory(logs);
+  const fcol = activeFiles().length ? `<th>پرونده</th>` : "";
+  const rows = DyFeatures.unanswered.withDerived(logs).map((l, i) => `<tr class="s-${kind(l.status)}"><td>${faNum(i + 1)}</td><td><b>${esc(DyFeatures.medLabelForLog(l))}</b><br><span class="muted">${esc(l.dose)}</span></td><td>${esc(l.drug_category)}</td>${fcol ? `<td>${esc(fileTitle(l.file_id) || "—")}</td>` : ""}<td>${esc(l.meal_relation || "—")}</td><td>${esc(l.weekday_name)}<br>${esc(l.persian_date)}</td><td>${esc(l.scheduled_time)}</td><td>${esc(l.actual_time)}</td><td>${esc(l.status)}</td></tr>`).join("");
+  const sportLogs = logs.filter(l => l.group === "sport"), medicalLogs = logs.filter(l => l.group !== "sport");
+  return fileChips(ui.recFile, "setRecFile", true) + (ui.recFile ? `<div class="card"><b>گزارش پرونده: ${esc(fileLabel(ui.recFile))}</b></div>` : "") + `<div class="card"><h2>شاخص پایبندی به درمان (Adherence)</h2><div class="ringwrap">
    <div class="ring"><svg width="128" height="128" viewBox="0 0 128 128"><circle cx="64" cy="64" r="52" fill="none" stroke="#E3EBF2" stroke-width="12"/><circle cx="64" cy="64" r="52" fill="none" stroke="#008975" stroke-width="12" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C * (1 - pct / 100)}"/></svg><div class="n">${faNum(pct)}٪<small>پایبندی کل</small></div></div>
    <div style="flex:1">${Object.entries(cats).map(([k, v]) => { const p = Math.round(v.k / v.t * 100); return `<div class="cat"><div class="k"><span>${esc(k)}</span><b>${faNum(p)}٪</b></div><div class="prog"><i style="width:${p}%"></i></div></div>`; }).join("") || '<span class="muted">هنوز نوبتی ثبت نشده است.</span>'}</div></div></div>
-  <div class="card"><h2>جدول مصرف دارو (MAR) برای پزشک معالج / مربی</h2>${st.logs.length ? `<div class="tw"><table><thead><tr><th>#</th><th>دارو و دوز</th><th>دسته</th><th>شرط مصرف</th><th>روز و تاریخ</th><th>مقرر</th><th>ثبت</th><th>وضعیت</th></tr></thead><tbody>${rows}</tbody></table></div>` : '<span class="muted">رکوردی ثبت نشده است.</span>'}
-  <button class="btn sec noprint" style="margin-top:10px" onclick="window.print()">🖨 چاپ گزارش</button></div>`;
+  <div class="card"><h2>🔥 روزهای پشت‌سرهم</h2><div style="font-size:25px;font-weight:800">${faNum(streakInfo())} روز ${streakInfo()>=30?'🥇':streakInfo()>=14?'🥈':streakInfo()>=7?'🥉':'🔥'}</div><p class="muted">تعداد روزهای متوالی دارای ثبت مصرف موفق</p></div>
+  <div class="card"><h2>📈 نمودار مصرف</h2><div class="row"><button class="pill on" onclick="ui.chartDays=7;render()">۷ روزه</button><button class="pill" onclick="ui.chartDays=30;render()">۳۰ روزه</button></div><div class="chart-bars">${chartLogs(ui.chartDays||7).map(x=>`<div class="chart-col"><b>${faNum(x.pct)}٪</b><i style="height:${Math.max(3,x.pct)}%" title="${x.total} نوبت"></i><small>${faNum(x.label)}</small></div>`).join('')}</div></div>
+  <div class="card"><h2>پایبندی جداگانه</h2><div class="cat"><div class="k"><span>داروهای درمانی</span><b>${faNum(adherence(medicalLogs))}٪</b></div></div><div class="cat"><div class="k"><span>مکمل‌های ورزشی</span><b>${faNum(adherence(sportLogs))}٪</b></div></div></div>
+  <div class="card"><h2>جدول مصرف دارو و مکمل (MAR) برای پزشک / مربی</h2>${(logs.length || DyFeatures.unanswered.compute().length) ? `<div class="tw"><table><thead><tr><th>#</th><th>دارو و دوز</th><th>دسته</th>${fcol}<th>شرط مصرف</th><th>روز و تاریخ</th><th>مقرر</th><th>ثبت</th><th>وضعیت</th></tr></thead><tbody>${rows}</tbody></table></div>` : '<span class="muted">رکوردی ثبت نشده است.</span>'}
+  <div class="row" style="margin-top:10px"><button class="btn" onclick="copyDoctorSummary()">📋 کپی خلاصه برای پزشک</button><button class="btn sec noprint" onclick="window.print()">🖨 چاپ گزارش</button></div></div>`;
 }
 
 /* ---------- آموزش درون‌برنامه (همه‌ی بخش‌ها؛ بدون نیاز به اینترنت) ---------- */
@@ -585,6 +864,21 @@ const TOUR = [
            "اگر در پروفایل ساعت بیداری، ناهار یا شام را ثبت کرده باشید، زیر ساعت‌ها دکمه‌های پیشنهاد ساعت (☀️ 🍽 🌙) می‌آید: ابتدا کادر ساعت را لمس کنید، بعد دکمه را بزنید.",
            "«مدت مصرف (روز)» را بنویسید و «افزودن به برنامه» را بزنید."],
    warn: "فهرست دارو و دوزهای پیش‌فرض فقط برای سریع‌تر شدن ثبت است و هنوز توسط داروساز بازبینی نشده؛ مقدار نهایی را همیشه طبق نسخه‌ی پزشک وارد کنید."},
+  {ic: "✍️", t: "ثبت دستی دارو", go: ["add", "رفتن به تب ثبت دارو"],
+   intro: "اگر داروی شما در فهرست نیست، خودتان آن را ثبت کنید. در تب «ثبت دارو» دکمه‌ی «✍️ ثبت دستی» را بزنید:",
+   steps: ["<b>نام دارو</b> و <b>دوز</b> را بنویسید (این دو اجباری‌اند).",
+           "<b>نوع دارو</b> را انتخاب کنید: قرص، کپسول، شربت، آمپول، قطره، کرم و غیره.",
+           "<b>نحوه‌ی مصرف</b> (خوراکی، تزریقی، موضعی و ...) و <b>شرایط مصرف</b> را انتخاب کنید.",
+           "دفعات و ساعت‌های مصرف و مدت را تنظیم کنید و در صورت نیاز یک <b>توضیح</b> کوتاه بنویسید.",
+           "در پایان یک <b>پرونده</b> برای دارو انتخاب کنید (اختیاری) و «افزودن به برنامه» را بزنید."],
+   warn: "مشخصات دارو را فقط طبق نسخه‌ی پزشک یا برچسب دارو وارد کنید؛ دارویار آن را بازبینی پزشکی نمی‌کند."},
+  {ic: "🗂", t: "تب «پرونده‌ها»", go: ["files", "رفتن به تب پرونده‌ها"],
+   intro: "اگر بیش از یک بیماری یا برنامه‌ی درمانی دارید، برای هر کدام یک پرونده‌ی جدا بسازید:",
+   steps: ["در تب «پرونده‌ها» یک نام بنویسید (مثلاً فشار خون، چربی، دیابت) یا یکی از پیشنهادها را بزنید و «ساخت پرونده» را لمس کنید.",
+           "هنگام ثبت هر دارو، پرونده‌ی آن را انتخاب کنید؛ از کارت هر پرونده هم می‌توانید مستقیم «+ افزودن دارو» بزنید.",
+           "در تب «امروز» و تب «گزارش» با نوار پرونده‌ها، فقط داروها و جدول مصرف همان پرونده را ببینید.",
+           "هر پرونده پایبندی جداگانه دارد؛ با «✏️ ویرایش» نام را عوض و با 🗑 حذفش کنید (داروهای آن حذف نمی‌شوند و به «بدون پرونده» می‌روند)."],
+   tip: "پرونده‌ها هم با سرور همگام می‌شوند و در حالت آفلاین روی گوشی می‌مانند."},
   {ic: "📄", t: "ثبت خودکار از روی نسخه‌ی الکترونیک", go: ["add", "رفتن به تب ثبت دارو"],
    intro: "اگر متن نسخه یا پیامک الکترونیک دارید، لازم نیست دارو به دارو وارد کنید:",
    steps: ["در تب «ثبت دارو» به کادر «دریافت خودکار نسخه‌ی الکترونیک» بروید.",
@@ -599,7 +893,7 @@ const TOUR = [
            "بعد از اتصال، متن نسخه را به بات بفرستید؛ داروها در همگام‌سازی بعدی (حدود یک دقیقه) در برنامه ظاهر می‌شوند.",
            "دستورهای بات: <span dir=\"ltr\">/meds</span> فهرست داروها، <span dir=\"ltr\">/delete_me</span> حذف همه‌ی اطلاعات، <span dir=\"ltr\">/help</span> راهنما."],
    warn: "این بخش هنوز با بات واقعی بله آزمایش نشده است؛ ممکن است در عمل نیاز به تنظیمات بیشتری داشته باشد."},
-  {ic: "📋", t: "تب «پرونده» و گزارش برای پزشک", go: ["record", "رفتن به تب پرونده"],
+  {ic: "📋", t: "تب «گزارش» و جدول مصرف برای پزشک", go: ["record", "رفتن به تب گزارش"],
    intro: "همه‌ی ثبت‌های شما اینجا جمع می‌شود.",
    steps: ["<b>شاخص پایبندی:</b> درصد نوبت‌هایی که «مصرف کردم» ثبت شده از کل نوبت‌های ثبت‌شده؛ هم کل و هم به تفکیک دسته. تعویق و «نخوردم» جزو مصرف‌شده حساب نمی‌شوند.",
            "<b>جدول مصرف دارو (MAR):</b> برای هر ثبت، دارو و دوز، دسته، شرط مصرف، روز و تاریخ شمسی، ساعت مقرر، ساعت ثبت و وضعیت.",
@@ -658,6 +952,7 @@ function viewProfile() {
   return `<div class="card"><h2>👤 پروفایل من</h2>
    <label for="pn">نام نمایشی</label><input id="pn" maxlength="40" value="${esc(u.display_name || "")}">
    <label for="pt">نوع پروفایل</label><select id="pt">${Object.entries(PROFILES).map(([k, v]) => `<option value="${k}" ${u.profile === k ? "selected" : ""}>${v}</option>`).join("")}</select>
+   <label for="pa">حساسیت‌های کلی من (دارویی، غذایی یا ترکیبات مصرفی)</label><textarea id="pa" placeholder="نام ماده حساسیت‌زا و نوع واکنش؛ در صورت نداشتن، خالی بگذارید">${esc(u.allergies || "")}</textarea>
    <div class="muted" style="margin-top:6px">${esc(u.username || "")} ${st.token ? "• متصل به سرور" : "• حالت آفلاین"}</div></div>
   <div class="card"><h2>⏰ ساعت‌های تقریبی روز</h2>
    <p class="muted" style="margin-top:0"><b>چرا ثبت می‌کنیم؟</b> بعضی داروها شرط مصرف مرتبط با غذا (مثل «همراه با غذا» یا «بعد از غذا») یا «ناشتا» دارند. با دانستن ساعت تقریبی بیداری، ناهار و شام شما، هنگام ثبت دارو می‌توانیم ساعت یادآور را به‌جای ساعت پیش‌فرض (مثلاً ۰۸:۰۰ یا ۲۰:۰۰)، نزدیک برنامه‌ی واقعی خودتان پیشنهاد کنیم. این ساعت‌ها فقط پیشنهاد هستند و همیشه می‌توانید تغییرشان دهید.</p>
@@ -670,7 +965,7 @@ function viewProfile() {
    <button class="btn sec" style="width:100%" onclick="openGuide(0)">دیدن آموزش</button></div>`;
 }
 async function saveProfile() {
-  const f = {display_name: $("#pn").value.trim(), profile: $("#pt").value, wake_time: $("#pw").value || "", lunch_time: $("#pl").value || "", dinner_time: $("#pd").value || ""};
+  const f = {display_name: $("#pn").value.trim(), profile: $("#pt").value, wake_time: $("#pw").value || "", lunch_time: $("#pl").value || "", dinner_time: $("#pd").value || "", allergies: $("#pa").value || ""};
   if (!f.display_name) f.display_name = (st.user || {}).username || "";
   const typeChanged = f.profile !== (st.user || {}).profile;
   st.user = Object.assign({}, st.user, f);
@@ -701,7 +996,7 @@ function viewSheet() {
   const u = st.user || {};
   return `<div class="overlay" onclick="if(event.target===this){ui.sheet=false;render()}"><div class="sheet"><h2 style="margin-top:0">${esc(u.display_name || u.username)}</h2>
   <div class="muted">${esc(PROFILES[u.profile] || "")} ${st.token ? "• متصل به سرور" : "• حالت آفلاین"}${st.lastSync ? " • آخرین همگام‌سازی: " + esc(tehran(new Date(st.lastSync)).hm) : ""}</div>
-  ${viewSettings()}
+  ${viewSettings()}${DyFeatures.settingsHTML()}
   <label for="srv">آدرس سرور</label><input id="srv" dir="ltr" style="text-align:left" value="${esc(st.server)}" placeholder="خالی = همین سرور">
   <div class="row" style="margin-top:10px"><button class="btn" onclick="st.server=$('#srv').value.trim();save();testServer()">ذخیره و آزمایش اتصال</button><button class="btn sec" onclick="sync(false)">همگام‌سازی اکنون</button></div>
   <div class="row" style="margin-top:10px"><button class="btn sec" onclick="askLogout()">خروج</button>${st.token ? `<button class="btn bad" onclick="deleteMe()">حذف همه‌ی اطلاعات من</button>` : ""}</div>
@@ -713,21 +1008,26 @@ async function doDeleteMe() { try { await api("/api/delete_me", "POST"); } catch
 
 /* ---------- رندر ---------- */
 function render() {
+  applyAppearance();
   const root = $("#root");
   if (!st.user) { root.innerHTML = viewAuth() + (ui.tour ? viewGuide() : ""); return; }
   if (!st.tourDone && !ui.tourShown) { ui.tourShown = true; ui.tour = {i: 0, list: false}; }
-  const tabs = [["today", "🏠", "امروز"], ["add", "+", "ثبت دارو"], ["record", "📋", "پرونده"], ["profile", "👤", "پروفایل"]];
+  const tabs = [["today", "🏠", "امروز"], ["files", "🗂", "پرونده‌ها"], ["add", "+", "ثبت دارو"], ["record", "📋", "گزارش"], ["profile", "👤", "پروفایل"]].concat(NF.tabs);
   root.innerHTML = `<header class="top">${LOGO}<div><h1>دارویار</h1><small>دارویار، یادآور داروی تو…</small></div>
    <div class="hbtns"><button class="chip" onclick="openGuide(0)" aria-label="راهنما">❓ راهنما</button><button class="chip" onclick="ui.sheet=true;render()" aria-label="تنظیمات">⚙️ تنظیمات</button></div></header>
-   <main>${ui.tab === "today" ? viewToday() : ui.tab === "add" ? viewAdd() : ui.tab === "profile" ? viewProfile() : viewRecord()}<p class="disc">دارویار فقط یادآور است و توصیه‌ی پزشکی نمی‌دهد. برای هر سؤال درباره‌ی دارو با پزشک یا داروساز صحبت کنید.</p></main>
+   <main>${ui.tab === "today" ? viewToday() : ui.tab === "add" ? viewAdd() : ui.tab === "files" ? viewFiles() : ui.tab === "care" ? NF.view() : ui.tab === "profile" ? viewProfile() : viewRecord()}<p class="disc">دارویار فقط یادآور است و توصیه‌ی پزشکی نمی‌دهد. برای هر سؤال درباره‌ی دارو با پزشک یا داروساز صحبت کنید.</p></main>
    <nav class="tabs">${tabs.map((t) => `<button class="${ui.tab === t[0] ? "on" : ""}${t[0] === "add" ? " mid" : ""}" onclick="ui.tab='${t[0]}';window.scrollTo(0,0);render()"><span class="ic">${t[1]}</span>${t[2]}</button>`).join("")}</nav>${ui.sheet ? viewSheet() : ""}${ui.tour ? viewGuide() : ""}`;
   notify();
+  checkMissedSupplements();
 }
 
 try { if (!st.token && !st.guest) st.user = null; } catch (e) {}
+DyFeatures.init({getState: () => st, getUi: () => ui, tehran, uid, save, render, toast, esc, faNum, kind, ST: {TAKEN: ST_TAKEN, SNOOZE: ST_SNOOZE, SKIP: ST_SKIP}});
 render();
+DyFeatures.lock.init();
+setInterval(DyFeatures.tick, 20000);
 setInterval(notify, 30000);
-setInterval(() => { if (st.token && !ui.sheet && ui.tab !== "add") sync(true); }, 60000);
+setInterval(() => { if (st.token && !ui.sheet && ui.tab !== "add" && ui.tab !== "care") sync(true); }, 60000);
 document.addEventListener("visibilitychange", () => { if (!document.hidden) { sync(true); notify(); } });
 if (st.token) sync(true);
 setTimeout(() => { if (window.AndroidBridge) window.nativeResume(); else pushSchedule(); }, 700);
