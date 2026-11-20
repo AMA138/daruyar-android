@@ -22,7 +22,7 @@ _READY = set()
 SCHEMA = {
     "users": """CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT UNIQUE NOT NULL, display_name TEXT DEFAULT '',
-        password_hash TEXT NOT NULL, salt TEXT NOT NULL, profile TEXT NOT NULL DEFAULT 'general',
+        password_hash TEXT NOT NULL, salt TEXT NOT NULL, profile TEXT NOT NULL DEFAULT 'general', allergies TEXT DEFAULT '',
         created_at TEXT NOT NULL, bale_chat_id TEXT, link_code TEXT)""",
     "sessions": """CREATE TABLE IF NOT EXISTS sessions (
         token TEXT PRIMARY KEY, user_id TEXT NOT NULL, created_at INTEGER NOT NULL)""",
@@ -36,13 +36,26 @@ SCHEMA = {
         id INTEGER PRIMARY KEY AUTOINCREMENT, med_name TEXT NOT NULL, drug_category TEXT NOT NULL,
         dose TEXT NOT NULL, scheduled_time TEXT NOT NULL, actual_time TEXT NOT NULL,
         weekday_name TEXT NOT NULL, persian_date TEXT NOT NULL, status TEXT NOT NULL)""",
+    # پرونده‌های درمانی (v3): هر کاربر می‌تواند چند پرونده بسازد (مثلاً فشار خون، چربی، دیابت)
+    "health_files": """CREATE TABLE IF NOT EXISTS health_files (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, user_id TEXT NOT NULL, client_id TEXT NOT NULL,
+        title TEXT NOT NULL, icon TEXT DEFAULT '', note TEXT DEFAULT '',
+        deleted INTEGER DEFAULT 0, updated_at INTEGER DEFAULT 0)""",
 }
 # ستون‌های اضافه‌شده در اسپرینت ۲ (برای مهاجرت دیتابیس قدیمی)
 NEW_COLUMNS = {
-    "users": [("lunch_time", "TEXT DEFAULT ''"), ("dinner_time", "TEXT DEFAULT ''"), ("wake_time", "TEXT DEFAULT ''")],
+    "users": [("lunch_time", "TEXT DEFAULT ''"), ("dinner_time", "TEXT DEFAULT ''"), ("wake_time", "TEXT DEFAULT ''"), ("allergies", "TEXT DEFAULT ''")],
     "medications": [("user_id", "TEXT DEFAULT 'default_user'"), ("client_id", "TEXT"), ("group_key", "TEXT DEFAULT ''"),
-                    ("deleted", "INTEGER DEFAULT 0"), ("updated_at", "INTEGER DEFAULT 0")],
-    "medication_logs": [("user_id", "TEXT DEFAULT 'default_user'"), ("client_id", "TEXT"), ("meal_relation", "TEXT DEFAULT ''")],
+                    ("deleted", "INTEGER DEFAULT 0"), ("updated_at", "INTEGER DEFAULT 0"),
+                    ("start_date", "TEXT DEFAULT ''"), ("interval_days", "INTEGER DEFAULT 1"),
+                    ("exercise_time", "TEXT DEFAULT ''"), ("allergy_notes", "TEXT DEFAULT ''"),
+                    ("review_after_days", "INTEGER DEFAULT 0"),
+                    # v3: پرونده‌ی درمانی + ثبت دستی (نوع دارو، نحوه‌ی مصرف، توضیحات)
+                    ("file_id", "TEXT DEFAULT ''"), ("drug_form", "TEXT DEFAULT ''"), ("route", "TEXT DEFAULT ''"),
+                    ("notes", "TEXT DEFAULT ''")],
+    "medication_logs": [("user_id", "TEXT DEFAULT 'default_user'"), ("client_id", "TEXT"),
+                        ("meal_relation", "TEXT DEFAULT ''"), ("group_key", "TEXT DEFAULT ''"),
+                        ("file_id", "TEXT DEFAULT ''")],
 }
 
 
@@ -67,6 +80,7 @@ def init_db(db_path="daruyar.db"):
             if col not in have:
                 cur.execute(f"ALTER TABLE {table} ADD COLUMN {col} {decl}")
     cur.execute("CREATE UNIQUE INDEX IF NOT EXISTS ux_med_client ON medications(user_id, client_id) WHERE client_id IS NOT NULL")
+    cur.execute("CREATE UNIQUE INDEX IF NOT EXISTS ux_file_client ON health_files(user_id, client_id)")
     cur.execute("CREATE UNIQUE INDEX IF NOT EXISTS ux_log_client ON medication_logs(user_id, client_id) WHERE client_id IS NOT NULL")
     conn.commit()
     conn.close()
@@ -92,7 +106,8 @@ def _user_dict(row):
             "profile": row["profile"], "bale_linked": bool(row["bale_chat_id"]),
             "lunch_time": (row["lunch_time"] or "") if "lunch_time" in keys else "",
             "dinner_time": (row["dinner_time"] or "") if "dinner_time" in keys else "",
-            "wake_time": (row["wake_time"] or "") if "wake_time" in keys else ""}
+            "wake_time": (row["wake_time"] or "") if "wake_time" in keys else "",
+            "allergies": (row["allergies"] or "") if "allergies" in keys else ""}
 
 
 def register_user(username, password, profile="general", display_name="", db_path="daruyar.db"):
@@ -146,6 +161,9 @@ def update_profile(user_id, db_path="daruyar.db", **fields):
         if key in fields:
             sets.append(key + "=?")
             vals.append(normalize_hhmm(fields[key]))
+    if "allergies" in fields:
+        sets.append("allergies=?")
+        vals.append(str(fields["allergies"] or "").strip()[:1000])
     conn = connect(db_path)
     try:
         if sets:
@@ -240,13 +258,15 @@ def has_user_consented(user_id=DEFAULT_USER, db_path="daruyar.db"):
 
 # ---------------------------------------------------------------- داروها
 def add_medication(name, drug_category, dose, times_csv, meal_relation="بعد از غذا", duration_days=30,
-                   db_path="daruyar.db", user_id=DEFAULT_USER, group_key="", client_id=None):
+                   db_path="daruyar.db", user_id=DEFAULT_USER, group_key="", client_id=None,
+                   file_id="", drug_form="", route="", notes=""):
     conn = connect(db_path)
     cur = conn.execute(
         """INSERT INTO medications (name, drug_category, dose, times_csv, meal_relation, duration_days,
-           user_id, client_id, group_key, deleted, updated_at) VALUES (?,?,?,?,?,?,?,?,?,0,?)""",
+           user_id, client_id, group_key, deleted, updated_at, file_id, drug_form, route, notes)
+           VALUES (?,?,?,?,?,?,?,?,?,0,?,?,?,?,?)""",
         (name, drug_category, dose, times_csv, meal_relation, int(duration_days), str(user_id), client_id,
-         group_key, int(time.time() * 1000)),
+         group_key, int(time.time() * 1000), file_id, drug_form, route, notes),
     )
     conn.commit()
     conn.close()
@@ -268,7 +288,9 @@ def list_meds_full(user_id, db_path="daruyar.db"):
     conn = connect(db_path)
     rows = conn.execute(
         """SELECT client_id, name, drug_category, group_key AS "group", dose, times_csv, meal_relation,
-           duration_days, deleted, updated_at FROM medications WHERE user_id=? AND client_id IS NOT NULL
+           duration_days, deleted, updated_at, start_date, interval_days, exercise_time, allergy_notes, review_after_days,
+           COALESCE(file_id,'') AS file_id, COALESCE(drug_form,'') AS drug_form,
+           COALESCE(route,'') AS route, COALESCE(notes,'') AS notes FROM medications WHERE user_id=? AND client_id IS NOT NULL
            ORDER BY updated_at""", (str(user_id),)).fetchall()
     conn.close()
     return [dict(r) for r in rows]
@@ -284,32 +306,92 @@ def upsert_meds(user_id, meds, db_path="daruyar.db"):
         ts = int(m.get("updated_at") or 0)
         vals = (str(m["name"])[:100], str(m.get("drug_category") or "")[:120], str(m.get("dose") or "")[:60],
                 str(m.get("times_csv") or "08:00")[:60], str(m.get("meal_relation") or "")[:80],
-                int(m.get("duration_days") or 30), str(m.get("group") or "")[:20], 1 if m.get("deleted") else 0, ts)
+                int(m.get("duration_days") or 0), str(m.get("group") or "")[:20], 1 if m.get("deleted") else 0, ts,
+                str(m.get("start_date") or "")[:10], max(1, min(365, int(m.get("interval_days") or 1))),
+                str(m.get("exercise_time") or "")[:5], str(m.get("allergy_notes") or "")[:500],
+                max(0, min(3650, int(m.get("review_after_days") or 0))),
+                str(m.get("file_id") or "")[:64], str(m.get("drug_form") or "")[:40], str(m.get("route") or "")[:40],
+                str(m.get("notes") or "")[:300])
         row = conn.execute("SELECT id, updated_at FROM medications WHERE user_id=? AND client_id=?", (str(user_id), cid)).fetchone()
         if row is None:
             conn.execute(
                 """INSERT INTO medications (name, drug_category, dose, times_csv, meal_relation, duration_days,
-                   group_key, deleted, updated_at, user_id, client_id) VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
+                   group_key, deleted, updated_at, start_date, interval_days, exercise_time, allergy_notes, review_after_days,
+                   file_id, drug_form, route, notes, user_id, client_id)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                 vals + (str(user_id), cid))
         elif ts >= (row["updated_at"] or 0):
             conn.execute(
                 """UPDATE medications SET name=?, drug_category=?, dose=?, times_csv=?, meal_relation=?,
-                   duration_days=?, group_key=?, deleted=?, updated_at=? WHERE id=?""", vals + (row["id"],))
+                   duration_days=?, group_key=?, deleted=?, updated_at=?, start_date=?, interval_days=?,
+                   exercise_time=?, allergy_notes=?, review_after_days=?, file_id=?, drug_form=?, route=?, notes=?
+                   WHERE id=?""", vals + (row["id"],))
     conn.commit()
     conn.close()
+
+
+# ---------------------------------------------------------------- پرونده‌های درمانی (v3)
+def list_files(user_id, db_path="daruyar.db"):
+    """همه‌ی پرونده‌ها (حذف‌شده‌ها هم با deleted=1 برای همگام‌سازی)"""
+    conn = connect(db_path)
+    rows = conn.execute(
+        """SELECT client_id, title, icon, note, deleted, updated_at FROM health_files
+           WHERE user_id=? ORDER BY updated_at""", (str(user_id),)).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def upsert_files(user_id, files, db_path="daruyar.db"):
+    """ادغام پرونده‌های کلاینت (آخرین نوشتن برنده است). حذف پرونده، داروهایش را حذف نمی‌کند؛ از پرونده خارج می‌شوند."""
+    conn = connect(db_path)
+    for f in files or []:
+        cid = str(f.get("client_id") or "")[:64]
+        title = str(f.get("title") or "").strip()[:60]
+        if not cid or not title:
+            continue
+        ts = int(f.get("updated_at") or 0)
+        deleted = 1 if f.get("deleted") else 0
+        vals = (title, str(f.get("icon") or "")[:8], str(f.get("note") or "")[:300], deleted, ts)
+        row = conn.execute("SELECT id, updated_at FROM health_files WHERE user_id=? AND client_id=?", (str(user_id), cid)).fetchone()
+        if row is None:
+            conn.execute("INSERT INTO health_files (title, icon, note, deleted, updated_at, user_id, client_id) VALUES (?,?,?,?,?,?,?)",
+                         vals + (str(user_id), cid))
+        elif ts >= (row["updated_at"] or 0):
+            conn.execute("UPDATE health_files SET title=?, icon=?, note=?, deleted=?, updated_at=? WHERE id=?", vals + (row["id"],))
+        if deleted and (row is None or ts >= (row["updated_at"] or 0)):
+            conn.execute("UPDATE medications SET file_id='', updated_at=? WHERE user_id=? AND file_id=?",
+                         (max(ts, int(time.time() * 1000)), str(user_id), cid))
+    conn.commit()
+    conn.close()
+
+
+def adherence_by_file(db_path="daruyar.db", user_id=DEFAULT_USER):
+    """{file_id: {total, taken, percent}} ؛ نوبت‌های بدون پرونده زیر کلید «» می‌آیند"""
+    conn = connect(db_path)
+    rows = conn.execute("SELECT COALESCE(file_id,''), status FROM medication_logs WHERE user_id=?", (str(user_id),)).fetchall()
+    conn.close()
+    out = {}
+    for fid, status in rows:
+        d = out.setdefault(fid, {"total": 0, "taken": 0})
+        d["total"] += 1
+        d["taken"] += status_kind(status) == "taken"
+    for d in out.values():
+        d["percent"] = round(d["taken"] / d["total"] * 100, 1)
+    return out
 
 
 # ---------------------------------------------------------------- تاریخچه‌ی مصرف (MAR)
 def log_medication_use(med_name, drug_category, dose, scheduled_time, status, custom_date=None,
                        custom_weekday=None, custom_actual_time=None, db_path="daruyar.db",
-                       user_id=DEFAULT_USER, meal_relation="", client_id=None):
+                       user_id=DEFAULT_USER, meal_relation="", client_id=None, group_key="", file_id=""):
     date_str, weekday, actual = get_persian_date_and_day()
     conn = connect(db_path)
     conn.execute(
         """INSERT OR IGNORE INTO medication_logs (med_name, drug_category, dose, scheduled_time, actual_time,
-           weekday_name, persian_date, status, user_id, meal_relation, client_id) VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
+           weekday_name, persian_date, status, user_id, meal_relation, client_id, group_key, file_id)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
         (med_name, drug_category, dose, scheduled_time, custom_actual_time or actual, custom_weekday or weekday,
-         custom_date or date_str, status, str(user_id), meal_relation, client_id))
+         custom_date or date_str, status, str(user_id), meal_relation, client_id, group_key, file_id))
     conn.commit()
     conn.close()
 
@@ -323,14 +405,15 @@ def insert_logs(user_id, logs, db_path="daruyar.db"):
             str(l["med_name"])[:100], str(l.get("drug_category") or "")[:120], str(l.get("dose") or "")[:60],
             str(l.get("scheduled_time") or "")[:10], str(l.get("status") or "")[:80], str(l.get("persian_date") or "")[:12] or None,
             str(l.get("weekday_name") or "")[:20] or None, str(l.get("actual_time") or "")[:10] or None,
-            db_path, user_id, str(l.get("meal_relation") or "")[:80], cid)
+            db_path, user_id, str(l.get("meal_relation") or "")[:80], cid, str(l.get("group") or "")[:20],
+            str(l.get("file_id") or "")[:64])
 
 
 def list_logs_full(user_id, db_path="daruyar.db"):
     conn = connect(db_path)
     rows = conn.execute(
         """SELECT client_id, med_name, drug_category, dose, scheduled_time, actual_time, weekday_name,
-           persian_date, status, meal_relation FROM medication_logs
+           persian_date, status, meal_relation, group_key AS "group", COALESCE(file_id,'') AS file_id FROM medication_logs
            WHERE user_id=? AND client_id IS NOT NULL ORDER BY id""", (str(user_id),)).fetchall()
     conn.close()
     return [dict(r) for r in rows]
@@ -379,12 +462,18 @@ def delete_user_data(user_id, db_path="daruyar.db"):
     """حذف کامل اطلاعات یک کاربر شامل حساب و نشست‌ها"""
     uid = str(user_id)
     conn = connect(db_path)
-    for table in ("medications", "medication_logs", "user_consent", "sessions"):
+    for table in ("medications", "medication_logs", "health_files", "user_consent", "sessions"):
         conn.execute(f"DELETE FROM {table} WHERE user_id=?", (uid,))
     if uid.isdigit():
         conn.execute("DELETE FROM users WHERE id=?", (int(uid),))
     conn.commit()
     conn.close()
+    try:  # قابلیت‌های جدید (موجودی، آب، پرونده‌ی سلامت)
+        import features2
+        features2.delete_user_data(uid, db_path)
+    except ModuleNotFoundError as exc:
+        if exc.name != "features2":
+            raise
 
 
 def delete_all_user_data(db_path="daruyar.db"):

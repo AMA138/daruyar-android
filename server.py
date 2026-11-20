@@ -14,6 +14,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import bale_client
 import config
 import db
+import features2
 import med_parser
 import messages
 import schedule
@@ -38,8 +39,18 @@ def render_index(drugs=None, cfg=None):
             b64 = base64.b64encode(f.read()).decode()
         font_css = ("@font-face{font-family:'Vazirmatn';font-weight:100 900;"
                     f"src:url(data:font/woff2;base64,{b64}) format('woff2');}}")
+    nf_js = ""
+    nf_path = os.path.join(WEB_DIR, "features2.js")
+    if os.path.exists(nf_path):
+        with open(nf_path, encoding="utf-8") as f:
+            nf_js = f.read().replace("</script", "<\\/script")
+    dy_js = ""
+    dy_path = os.path.join(WEB_DIR, "dy-features.js")
+    if os.path.exists(dy_path):
+        with open(dy_path, encoding="utf-8") as f:
+            dy_js = f.read().replace("</script", "<\\/script")
     payload = lambda o: json.dumps(o, ensure_ascii=False).replace("</", "<\\/")
-    return (html.replace("__DRUGS_JSON__", payload(drugs if drugs is not None else med_parser.DRUGS))
+    return (html.replace("/*__DY_JS__*/", dy_js).replace("/*__NF_JS__*/", nf_js).replace("__DRUGS_JSON__", payload(drugs if drugs is not None else med_parser.DRUGS))
                 .replace("__CONFIG_JSON__", payload(cfg if cfg is not None else client_config()))
                 .replace("/*__FONT_CSS__*/", font_css))
 
@@ -138,6 +149,9 @@ class Handler(BaseHTTPRequestHandler):
                 if not user:
                     return self._send(401, {"error": messages.AUTH_BAD})
                 return self._send(200, self._state(user) if path != "/api/me" else {"user": user})
+            res = features2.route("GET", path, None, self._user(), self.server.db_path, urllib.parse.urlparse(self.path).query)
+            if res:
+                return self._send(*res)
             self._send(404, {"error": "not found"})
         except Exception as exc:
             self._send(500, {"error": str(exc)})
@@ -179,7 +193,11 @@ class Handler(BaseHTTPRequestHandler):
             user = self._user()
             if not user:
                 return self._send(401, {"error": messages.AUTH_BAD})
+            res = features2.route("POST", path, data, user, dbp)
+            if res:
+                return self._send(*res)
             if path == "/api/sync":
+                db.upsert_files(user["id"], data.get("files"), dbp)   # قبل از داروها: حذف پرونده داروها را آزاد می‌کند
                 db.upsert_meds(user["id"], data.get("meds"), dbp)
                 db.insert_logs(user["id"], data.get("logs"), dbp)
                 return self._send(200, self._state(user))
@@ -207,6 +225,7 @@ class Handler(BaseHTTPRequestHandler):
         dbp, uid = self.server.db_path, user["id"]
         return {
             "user": user, "meds": db.list_meds_full(uid, dbp), "logs": db.list_logs_full(uid, dbp),
+            "files": db.list_files(uid, dbp), "adherence_by_file": db.adherence_by_file(dbp, uid),
             "adherence": db.calculate_adherence_percentage(dbp, uid),
             "adherence_by_category": db.adherence_by_category(dbp, uid),
             "server_time": schedule.utc_str(),
