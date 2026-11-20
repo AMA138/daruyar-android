@@ -94,3 +94,19 @@ def test_bale_link_flow(path):
 def test_demo_data(path):
     db.insert_sample_demo_data(path)
     assert len(db.get_doctor_report(path)) == 21 and 0 < db.calculate_adherence_percentage(path) < 100
+
+
+def test_supplement_metadata_and_allergies_sync(path):
+    u = db.register_user("athlete1", "secret1", "athlete", db_path=path)
+    updated = db.update_profile(u["id"], path, allergies="بادام زمینی")
+    assert updated["allergies"] == "بادام زمینی"
+    med = {"client_id": "sport-1", "name": "کراتین", "drug_category": "مکمل ورزشی", "group": "sport",
+           "dose": "طبق برچسب", "times_csv": "18:00", "start_date": "2026-11-18", "interval_days": 2,
+           "exercise_time": "17:30", "allergy_notes": "", "review_after_days": 45, "updated_at": 100}
+    db.upsert_meds(u["id"], [med], path)
+    saved = db.list_meds_full(u["id"], path)[0]
+    assert saved["interval_days"] == 2 and saved["exercise_time"] == "17:30"
+    assert saved["review_after_days"] == 45 and saved["start_date"] == "2026-11-18"
+    db.insert_logs(u["id"], [{"client_id":"log-sport", "med_name":"کراتین", "drug_category":"مکمل ورزشی",
+        "dose":"طبق برچسب", "scheduled_time":"18:00", "status":"✅ مصرف شد", "group":"sport"}], path)
+    assert db.list_logs_full(u["id"], path)[0]["group"] == "sport"
