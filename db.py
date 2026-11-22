@@ -317,8 +317,7 @@ def upsert_meds(user_id, meds, db_path="daruyar.db"):
             conn.execute(
                 """INSERT INTO medications (name, drug_category, dose, times_csv, meal_relation, duration_days,
                    group_key, deleted, updated_at, start_date, interval_days, exercise_time, allergy_notes, review_after_days,
-                   file_id, drug_form, route, notes, user_id, client_id)
-                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                   file_id, drug_form, route, notes, user_id, client_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                 vals + (str(user_id), cid))
         elif ts >= (row["updated_at"] or 0):
             conn.execute(

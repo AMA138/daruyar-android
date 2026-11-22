@@ -44,13 +44,8 @@ def render_index(drugs=None, cfg=None):
     if os.path.exists(nf_path):
         with open(nf_path, encoding="utf-8") as f:
             nf_js = f.read().replace("</script", "<\\/script")
-    dy_js = ""
-    dy_path = os.path.join(WEB_DIR, "dy-features.js")
-    if os.path.exists(dy_path):
-        with open(dy_path, encoding="utf-8") as f:
-            dy_js = f.read().replace("</script", "<\\/script")
     payload = lambda o: json.dumps(o, ensure_ascii=False).replace("</", "<\\/")
-    return (html.replace("/*__DY_JS__*/", dy_js).replace("/*__NF_JS__*/", nf_js).replace("__DRUGS_JSON__", payload(drugs if drugs is not None else med_parser.DRUGS))
+    return (html.replace("/*__NF_JS__*/", nf_js).replace("__DRUGS_JSON__", payload(drugs if drugs is not None else med_parser.DRUGS))
                 .replace("__CONFIG_JSON__", payload(cfg if cfg is not None else client_config()))
                 .replace("/*__FONT_CSS__*/", font_css))
 
@@ -202,7 +197,7 @@ class Handler(BaseHTTPRequestHandler):
                 db.insert_logs(user["id"], data.get("logs"), dbp)
                 return self._send(200, self._state(user))
             if path == "/api/profile":
-                fields = {k: data[k] for k in ("display_name", "profile", "wake_time", "lunch_time", "dinner_time") if k in data}
+                fields = {k: data[k] for k in ("display_name", "profile", "wake_time", "lunch_time", "dinner_time", "allergies") if k in data}
                 try:
                     updated = db.update_profile(user["id"], dbp, **fields)
                 except ValueError as exc:
