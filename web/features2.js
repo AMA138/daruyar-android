@@ -1,6 +1,6 @@
 /* features2.js — دارویار: موجودی دارو • یادآوری آب • پرونده‌ی اطلاعات ضروری سلامت
    مستقل از بقیه‌ی برنامه است و فقط از متغیرها/توابع موجود index.html استفاده می‌کند:
-   st, ui, render, save, toast, esc, faNum, uid, tehran, scheduleSync, api, base, askConfirm, $.
+   st, ui, render, save, toast, esc, faNum, uid, tehran, scheduleSync, api, base, $.
    داده‌ها در st.nf (همان localStorage برنامه) می‌مانند و با POST /api/sync2 همگام می‌شوند. */
 var NF = (function () {
   "use strict";
