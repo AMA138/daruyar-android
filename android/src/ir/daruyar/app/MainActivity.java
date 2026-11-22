@@ -20,7 +20,9 @@ import android.media.RingtoneManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.CancellationSignal;
 import android.os.SystemClock;
+import android.hardware.biometrics.BiometricPrompt;
 import android.view.Window;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebSettings;
@@ -89,6 +91,42 @@ public class MainActivity extends Activity {
     }
 
     @Override
+    protected void onPause() {
+        super.onPause();
+        if (pageReady && web != null) web.evaluateJavascript("window.onAppPaused && window.onAppPaused()", null);
+    }
+
+    private void sendBiometric(final boolean ok) {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                if (web != null) web.evaluateJavascript("window.onBiometricResult && window.onBiometricResult(" + ok + ")", null);
+            }
+        });
+    }
+
+    private void startBiometric() {
+        if (Build.VERSION.SDK_INT < 28) { sendBiometric(false); return; }
+        try {
+            BiometricPrompt prompt = new BiometricPrompt.Builder(this)
+                    .setTitle("ورود به دارویار")
+                    .setNegativeButton("انصراف", getMainExecutor(), new android.content.DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(android.content.DialogInterface d, int which) { sendBiometric(false); }
+                    }).build();
+            prompt.authenticate(new CancellationSignal(), getMainExecutor(), new BiometricPrompt.AuthenticationCallback() {
+                @Override
+                public void onAuthenticationSucceeded(BiometricPrompt.AuthenticationResult result) { sendBiometric(true); }
+
+                @Override
+                public void onAuthenticationError(int code, CharSequence msg) { sendBiometric(false); }
+            });
+        } catch (Throwable t) {
+            sendBiometric(false);
+        }
+    }
+
+    @Override
     protected void onResume() {
         super.onResume();
         if (pageReady && web != null) {
@@ -104,6 +142,14 @@ public class MainActivity extends Activity {
             Store.saveSched(c, json);
             Sched.rescheduleAll(c);
             Notifs.refresh(c);
+        }
+
+        @JavascriptInterface
+        public void authenticate() {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() { startBiometric(); }
+            });
         }
 
         @JavascriptInterface
@@ -141,6 +187,19 @@ public class MainActivity extends Activity {
             } catch (Exception e) {
                 return new JSONArray();
             }
+        }
+
+        static JSONObject dy(Context c) {
+            JSONObject o = sched(c).optJSONObject("dy");
+            return o == null ? new JSONObject() : o;
+        }
+
+        static int snoozeCount(Context c, String key) {
+            return p(c).getInt("snz_" + key, 0);
+        }
+
+        static void bumpSnooze(Context c, String key) {
+            p(c).edit().putInt("snz_" + key, snoozeCount(c, key) + 1).apply();
         }
 
         static synchronized void addDone(Context c, String key) {
@@ -215,7 +274,8 @@ public class MainActivity extends Activity {
     /* ======================= زمان‌بندی زنگ‌ها ======================= */
     static final class Ring {
         long t, due;
-        String name, dose, meal, time, day;
+        boolean critical;
+        String name, display, dose, meal, time, day;
     }
 
     static final class Sched {
@@ -244,7 +304,8 @@ public class MainActivity extends Activity {
         }
 
         static void fill(Intent in, Ring r) {
-            in.putExtra("name", r.name).putExtra("dose", r.dose).putExtra("meal", r.meal)
+            in.putExtra("name", r.name).putExtra("display", r.display).putExtra("crit", r.critical)
+                    .putExtra("dose", r.dose).putExtra("meal", r.meal)
                     .putExtra("time", r.time).putExtra("day", r.day).putExtra("due", r.due);
         }
 
@@ -259,6 +320,9 @@ public class MainActivity extends Activity {
             int every = Math.max(1, st.optInt("repeatMin", 5));
             int count = Math.max(0, Math.min(10, st.optInt("repeatCount", 2)));
             JSONArray meds = Store.sched(c).optJSONArray("meds");
+            JSONObject dy = Store.dy(c);
+            int critRepeat = Math.max(1, dy.optInt("criticalRepeatMin", 5));
+            int critWindow = Math.max(0, dy.optInt("criticalUnansweredAfterMin", 15));
             long now = System.currentTimeMillis();
             List<Ring> list = new ArrayList<>();
             if (medOn && meds != null) {
@@ -274,13 +338,20 @@ public class MainActivity extends Activity {
                         for (int d = -1; d <= 2; d++) {
                             long due = at(now, d, x[0], x[1]);
                             Set<Long> seen = new HashSet<>();
-                            for (int k = 0; k <= count + 1; k++) {
-                                long rt = (k <= count) ? due - lead * 60000L + k * every * 60000L : due;
+                            boolean crit = m.optBoolean("critical", false);
+                            int extra = crit ? critWindow / critRepeat : 0;
+                            for (int k = 0; k <= count + 1 + extra; k++) {
+                                long rt;
+                                if (k <= count) rt = due - lead * 60000L + k * every * 60000L;
+                                else if (k == count + 1) rt = due;
+                                else rt = due + (long) (k - count - 1) * critRepeat * 60000L;
                                 if (rt <= now + 1000 || !seen.add(rt)) continue;
                                 Ring r = new Ring();
                                 r.t = rt;
                                 r.due = due;
+                                r.critical = crit;
                                 r.name = m.optString("name");
+                                r.display = m.optString("display", r.name);
                                 r.dose = m.optString("dose");
                                 r.meal = m.optString("meal");
                                 r.time = ts.trim();
@@ -318,7 +389,7 @@ public class MainActivity extends Activity {
     /* ======================= نوتیفیکیشن‌ها ======================= */
     static final class Next {
         long due, prev;
-        String name, dose, meal, time;
+        String name, display, dose, meal, time;
     }
 
     static final class Notifs {
@@ -375,10 +446,24 @@ public class MainActivity extends Activity {
 
         static Notification.Action act(Context c, String label, String act, Ring r, int nid, int idx) {
             Intent in = new Intent(c, ActionReceiver.class).setAction(ACT_DO).setData(Uri.parse("daruyar://do/" + nid + "/" + act));
-            in.putExtra("act", act).putExtra("name", r.name).putExtra("dose", r.dose).putExtra("meal", r.meal)
+            in.putExtra("act", act).putExtra("name", r.name).putExtra("display", r.display).putExtra("crit", r.critical)
+                    .putExtra("dose", r.dose).putExtra("meal", r.meal)
                     .putExtra("time", r.time).putExtra("day", r.day).putExtra("due", r.due).putExtra("nid", nid);
             PendingIntent pi = PendingIntent.getBroadcast(c, nid * 4 + idx, in, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
             return new Notification.Action.Builder(Icon.createWithResource(c, android.R.drawable.ic_menu_agenda), label, pi).build();
+        }
+
+        /** صفحه‌ی قفل نام دارو را نشان ندهد (طبق تنظیم dy.privacy) */
+        static void applyPrivacy(Context c, Notification.Builder b) {
+            JSONObject pr = Store.dy(c).optJSONObject("privacy");
+            if (pr == null || !pr.optBoolean("hideOnLockScreen", true)) return;
+            Notification pub = new Notification.Builder(c, CH_INFO)
+                    .setSmallIcon(android.R.drawable.ic_popup_reminder)
+                    .setColor(TEAL)
+                    .setContentTitle(pr.optString("publicTitle", "یادآور مصرف دارو"))
+                    .setContentText(pr.optString("publicText", "برای دیدن جزئیات، گوشی را باز کنید"))
+                    .build();
+            b.setVisibility(Notification.VISIBILITY_PRIVATE).setPublicVersion(pub);
         }
 
         /** نوتیفیکیشن شماره ۲: داروی در حال رسیدن، با سه دکمه */
@@ -387,14 +472,15 @@ public class MainActivity extends Activity {
             if (!st.optBoolean("notifMed", true)) return;
             boolean snd = st.optBoolean("sound", true), vib = st.optBoolean("vibrate", true);
             long diff = (r.due - System.currentTimeMillis()) / 60000L;
-            String title = diff >= 1 ? "💊 " + r.name + " — " + fa(String.valueOf(diff)) + " دقیقه تا مصرف" : "💊 وقت مصرف " + r.name + " است";
+            String shown = (r.display != null && r.display.length() > 0) ? r.display : r.name;
+            String title = diff >= 1 ? "💊 " + shown + " — " + fa(String.valueOf(diff)) + " دقیقه تا مصرف" : "💊 وقت مصرف " + shown + " است";
             String text = (r.dose == null ? "" : r.dose) + (r.meal != null && r.meal.length() > 0 ? " · " + r.meal : "");
             int nid = doseId(r.name, r.time);
             RemoteViews rv = new RemoteViews(c.getPackageName(), rid(c, "notif_dose", "layout"));
             rv.setTextViewText(rid(c, "z_time", "id"), fa(r.time));
             rv.setTextViewText(rid(c, "z_title", "id"), title);
             rv.setTextViewText(rid(c, "z_sub", "id"), text);
-            Notification n = new Notification.Builder(c, doseChannel(snd, vib))
+            Notification.Builder b = new Notification.Builder(c, doseChannel(snd, vib))
                     .setSmallIcon(android.R.drawable.ic_popup_reminder)
                     .setColor(TEAL)
                     .setStyle(new Notification.DecoratedCustomViewStyle())
@@ -407,11 +493,14 @@ public class MainActivity extends Activity {
                     .setAutoCancel(false)
                     .setTimeoutAfter(90 * 60000L)
                     .setContentIntent(openApp(c))
-                    .addAction(act(c, "✅ مصرف کردم", "taken", r, nid, 0))
-                    .addAction(act(c, "⏳ ۱۰ دقیقه بعد", "snooze", r, nid, 1))
-                    .addAction(act(c, "❌ نخوردم", "skip", r, nid, 2))
-                    .build();
-            ((NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE)).notify(nid, n);
+                    .addAction(act(c, "✅ مصرف کردم", "taken", r, nid, 0));
+            int snzMax = Store.dy(c).optInt("snoozeMax", 3);
+            if (!r.critical && Store.snoozeCount(c, r.name + "|" + r.time + "|" + r.day) < snzMax) {
+                b.addAction(act(c, "⏳ ۱۰ دقیقه بعد", "snooze", r, nid, 1));
+            }
+            b.addAction(act(c, "❌ نخوردم", "skip", r, nid, 2));
+            applyPrivacy(c, b);
+            ((NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE)).notify(nid, b.build());
         }
 
         static String icu(String pattern, String calendar) {
@@ -446,6 +535,7 @@ public class MainActivity extends Activity {
                                 best = new Next();
                                 best.due = t;
                                 best.name = m.optString("name");
+                                best.display = m.optString("display", best.name);
                                 best.dose = m.optString("dose");
                                 best.meal = m.optString("meal");
                                 best.time = times.optString(ti).trim();
@@ -502,13 +592,13 @@ public class MainActivity extends Activity {
             long total = Math.max(1, x.due - x.prev);
             int pr = (int) Math.max(0, Math.min(1000, 1000.0 * remain / total));
             RemoteViews rv = new RemoteViews(c.getPackageName(), rid(c, "notif_next", "layout"));
-            rv.setTextViewText(rid(c, "n_title", "id"), "💊 داروی بعدی: " + x.name);
+            rv.setTextViewText(rid(c, "n_title", "id"), "💊 داروی بعدی: " + ((x.display != null && x.display.length() > 0) ? x.display : x.name));
             rv.setTextViewText(rid(c, "n_sub", "id"), (x.dose == null ? "" : x.dose) + " · ساعت " + fa(x.time));
             int timer = rid(c, "n_timer", "id");
             rv.setChronometerCountDown(timer, true);
             rv.setChronometer(timer, SystemClock.elapsedRealtime() + remain, null, true);
             rv.setProgressBar(rid(c, "n_bar", "id"), 1000, pr, false);
-            Notification n = new Notification.Builder(c, CH_INFO)
+            Notification.Builder nb = new Notification.Builder(c, CH_INFO)
                     .setSmallIcon(android.R.drawable.ic_popup_reminder)
                     .setColor(TEAL)
                     .setStyle(new Notification.DecoratedCustomViewStyle())
@@ -517,9 +607,9 @@ public class MainActivity extends Activity {
                     .setOnlyAlertOnce(true)
                     .setShowWhen(false)
                     .setVisibility(Notification.VISIBILITY_PUBLIC)
-                    .setContentIntent(openApp(c))
-                    .build();
-            nm.notify(ID_NEXT, n);
+                    .setContentIntent(openApp(c));
+            applyPrivacy(c, nb);
+            nm.notify(ID_NEXT, nb.build());
         }
     }
 
@@ -531,6 +621,8 @@ public class MainActivity extends Activity {
                 if (ACT_RING.equals(in.getAction())) {
                     Ring r = new Ring();
                     r.name = in.getStringExtra("name");
+                    r.display = in.getStringExtra("display");
+                    r.critical = in.getBooleanExtra("crit", false);
                     r.dose = in.getStringExtra("dose");
                     r.meal = in.getStringExtra("meal");
                     r.time = in.getStringExtra("time");
@@ -554,6 +646,8 @@ public class MainActivity extends Activity {
                 String act = in.getStringExtra("act");
                 Ring r = new Ring();
                 r.name = in.getStringExtra("name");
+                r.display = in.getStringExtra("display");
+                r.critical = in.getBooleanExtra("crit", false);
                 r.dose = in.getStringExtra("dose");
                 r.meal = in.getStringExtra("meal");
                 r.time = in.getStringExtra("time");
@@ -563,6 +657,7 @@ public class MainActivity extends Activity {
                 NotificationManager nm = (NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE);
                 nm.cancel(nid);
                 if ("snooze".equals(act)) {
+                    Store.bumpSnooze(c, r.name + "|" + r.time + "|" + r.day);
                     Intent s = Sched.ringIntent(c, "snooze", nid);
                     Sched.fill(s, r);
                     PendingIntent pi = PendingIntent.getBroadcast(c, 7000 + (nid % 1000), s, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
