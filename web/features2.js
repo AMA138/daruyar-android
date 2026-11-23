@@ -88,18 +88,18 @@ var NF = (function () {
         '<div class="row"><div style="flex:1;min-width:130px"><label for="nfp">مصرف در هر نوبت</label><input id="nfp" inputmode="decimal" value="' + esc(fm.units_per_dose) + '" oninput="ui.nfF.units_per_dose=this.value"></div>' +
         '<div style="flex:1;min-width:130px"><label for="nfu">واحد (قرص، کپسول…)</label><input id="nfu" value="' + esc(fm.unit) + '" oninput="ui.nfF.unit=this.value"></div></div>' +
         '<label for="nfl">هشدار وقتی موجودی به این تعداد روز رسید</label><input id="nfl" inputmode="numeric" value="' + esc(fm.low_days) + '" oninput="ui.nfF.low_days=this.value">' +
-        '<div class="row" style="margin-top:10px"><button class="btn" onclick="NF.saveStock(\'' + esc(m.client_id) + '\')">ذخیره</button>' +
+        '<div class="row" style="margin-top:10px"><button class="btn" onclick="NF.saveStock(' + jsq(m.client_id) + ')">ذخیره</button>' +
         '<button class="btn sec" onclick="ui.nfEdit=null;render()">انصراف</button>' +
-        (i ? '<button class="btn bad" onclick="NF.removeStock(\'' + esc(m.client_id) + '\')">حذف موجودی</button>' : '') + '</div>';
+        (i ? '<button class="btn bad" onclick="NF.removeStock(' + jsq(m.client_id) + ')">حذف موجودی</button>' : '') + '</div>';
     } else if (i) {
       var cls = i.status === "ok" ? "nf-ok" : i.status === "low" ? "nf-warn" : "nf-bad";
       var lbl = i.status === "ok" ? "کافی" : i.status === "low" ? "رو به اتمام" : "تمام شده";
       body = '<div class="row" style="align-items:center;margin-top:6px"><span class="nf-badge ' + cls + '">' + lbl + '</span>' +
         '<span><b>' + f(i.q) + '</b> ' + esc(i.it.unit || "عدد") + ' • حدود <b>' + faNum(i.days) + '</b> روز</span></div>' +
         (i.status !== "ok" ? '<div class="muted" style="margin-top:4px">' + esc(stockMsg(m, i)) + '</div>' : '') +
-        '<div class="row" style="margin-top:8px"><button class="btn sec small" onclick="NF.editStock(\'' + esc(m.client_id) + '\')">ویرایش / تهیه‌ی مجدد</button></div>';
+        '<div class="row" style="margin-top:8px"><button class="btn sec small" onclick="NF.editStock(' + jsq(m.client_id) + ')">ویرایش / تهیه‌ی مجدد</button></div>';
     } else {
-      body = '<div class="muted" style="margin-top:4px">موجودی ثبت نشده است.</div><div class="row" style="margin-top:8px"><button class="btn small" onclick="NF.editStock(\'' + esc(m.client_id) + '\')">ثبت موجودی</button></div>';
+      body = '<div class="muted" style="margin-top:4px">موجودی ثبت نشده است.</div><div class="row" style="margin-top:8px"><button class="btn small" onclick="NF.editStock(' + jsq(m.client_id) + ')">ثبت موجودی</button></div>';
     }
     return '<div class="card">' + head + body + '</div>';
   }

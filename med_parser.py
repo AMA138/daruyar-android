@@ -76,8 +76,10 @@ def detect_meal_relation(line):
     return None
 
 
+MAX_LINES, MAX_LINE_LEN = 200, 300
+
 _DOSE_RE = re.compile(
-    r"(\d+(?:\.\d+)?\s*(?:میلی\s*‌?گرم|میکروگرم|گرم|میلی\s*‌?لیتر|سی\s*‌?سی|mg|mcg|g|ml|cc|iu|واحد|قطره|اسکوپ|عدد|قرص|کپسول))",
+    r"(\d{1,7}(?:\.\d{1,4})?\s{0,3}(?:میلی\s{0,3}‌?گرم|میکروگرم|گرم|میلی\s{0,3}‌?لیتر|سی\s{0,3}‌?سی|mg|mcg|g|ml|cc|iu|واحد|قطره|اسکوپ|عدد|قرص|کپسول))",
     re.IGNORECASE,
 )
 _TIME_RE = re.compile(r"\b([01]?\d|2[0-3]):([0-5]\d)\b")
@@ -110,8 +112,9 @@ def parse_prescription(text):
     if not text or not text.strip():
         return []
     results = []
-    for raw in text.strip().splitlines():
-        raw = raw.strip()
+    # سقف ورودی (جلوگیری از مصرف CPU توسط متن عظیم): حداکثر ۲۰۰ خط و ۳۰۰ نویسه در هر خط
+    for raw in text.strip().splitlines()[:MAX_LINES]:
+        raw = raw.strip()[:MAX_LINE_LEN]
         if not raw:
             continue
         line = to_ascii_digits(raw)

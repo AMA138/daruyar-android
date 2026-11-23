@@ -6,6 +6,7 @@ db.py - پایگاه داده SQLite دارویار (چندکاربره + ثبت
 """
 import hashlib
 import hmac
+import os
 import re
 import secrets
 import sqlite3
@@ -15,7 +16,13 @@ import schedule
 
 DEFAULT_USER = "default_user"
 SESSION_TTL = 30 * 24 * 3600
-PBKDF2_ROUNDS = 120_000
+PBKDF2_ROUNDS = 600_000          # دورهای هش برای حساب‌های جدید (توصیه‌ی OWASP برای PBKDF2-HMAC-SHA256)
+LEGACY_PBKDF2_ROUNDS = 120_000   # حساب‌های قدیمی؛ با اولین ورود موفق خودکار ارتقا می‌یابند
+MAX_PASSWORD = 128               # سقف طول رمز (جلوگیری از مصرف CPU با رمزهای عظیم)
+LINK_CODE_TTL = 600              # اعتبار کد اتصال بله: ۱۰ دقیقه
+MAX_SYNC_ITEMS = 5000            # سقف تعداد ردیف در هر لیست همگام‌سازی
+ID_RE = re.compile(r"^[A-Za-z0-9_.:\-]{1,64}$")
+INT_MAX = 2 ** 53 - 1
 PROFILES = ("general", "athlete", "prosthetic_beauty")
 _READY = set()
 
@@ -44,7 +51,8 @@ SCHEMA = {
 }
 # ستون‌های اضافه‌شده در اسپرینت ۲ (برای مهاجرت دیتابیس قدیمی)
 NEW_COLUMNS = {
-    "users": [("lunch_time", "TEXT DEFAULT ''"), ("dinner_time", "TEXT DEFAULT ''"), ("wake_time", "TEXT DEFAULT ''"), ("allergies", "TEXT DEFAULT ''")],
+    "users": [("lunch_time", "TEXT DEFAULT ''"), ("dinner_time", "TEXT DEFAULT ''"), ("wake_time", "TEXT DEFAULT ''"), ("allergies", "TEXT DEFAULT ''"),
+              ("pw_rounds", "INTEGER DEFAULT 120000"), ("link_code_at", "INTEGER DEFAULT 0")],
     "medications": [("user_id", "TEXT DEFAULT 'default_user'"), ("client_id", "TEXT"), ("group_key", "TEXT DEFAULT ''"),
                     ("deleted", "INTEGER DEFAULT 0"), ("updated_at", "INTEGER DEFAULT 0"),
                     ("start_date", "TEXT DEFAULT ''"), ("interval_days", "INTEGER DEFAULT 1"),
@@ -82,8 +90,16 @@ def init_db(db_path="daruyar.db"):
     cur.execute("CREATE UNIQUE INDEX IF NOT EXISTS ux_med_client ON medications(user_id, client_id) WHERE client_id IS NOT NULL")
     cur.execute("CREATE UNIQUE INDEX IF NOT EXISTS ux_file_client ON health_files(user_id, client_id)")
     cur.execute("CREATE UNIQUE INDEX IF NOT EXISTS ux_log_client ON medication_logs(user_id, client_id) WHERE client_id IS NOT NULL")
+    # مهاجرت نشست‌های قدیمی: توکن خام (۴۸ نویسه) → SHA-256 (۶۴ نویسه). فقط هش در دیتابیس می‌ماند.
+    for (tok,) in cur.execute("SELECT token FROM sessions WHERE length(token)<>64").fetchall():
+        cur.execute("UPDATE sessions SET token=? WHERE token=?", (_tok_hash(tok), tok))
     conn.commit()
     conn.close()
+    if db_path != ":memory:":
+        try:
+            os.chmod(db_path, 0o600)  # فقط مالک فایل بتواند بخواند (روی ویندوز/Pydroid ممکن است بی‌اثر باشد)
+        except OSError:
+            pass
     _READY.add(db_path)
 
 
@@ -93,10 +109,37 @@ def get_persian_date_and_day(now=None):
     return schedule.jalali_date_str(now), schedule.weekday_fa(now), now.strftime("%H:%M")
 
 
+# ---------------------------------------------------------------- اعتبارسنجی ورودی
+def clean_id(value):
+    """شناسه‌ی کلاینت: فقط حروف/ارقام و _ . : - تا ۶۴ نویسه؛ در غیر این صورت رشته‌ی خالی"""
+    v = value if isinstance(value, str) else ""
+    return v if ID_RE.match(v) else ""
+
+
+def _i(value, lo, hi, default=0):
+    """عدد صحیح در بازه‌ی [lo, hi]؛ ورودی نامعتبر یا خارج از بازه → default (هرگز استثنا نمی‌دهد)"""
+    try:
+        n = int(value)
+    except (TypeError, ValueError, OverflowError):
+        return default
+    return n if lo <= n <= hi else default
+
+
+def _dicts(items):
+    """فقط لیستِ دیکشنری‌ها، حداکثر MAX_SYNC_ITEMS ردیف (بقیه‌ی انواع نادیده گرفته می‌شوند)"""
+    if not isinstance(items, list):
+        return []
+    return [x for x in items[:MAX_SYNC_ITEMS] if isinstance(x, dict)]
+
+
+def _tok_hash(token):
+    return hashlib.sha256(str(token).encode("utf-8")).hexdigest()
+
+
 # ---------------------------------------------------------------- کاربران و نشست
-def hash_password(password, salt=None):
+def hash_password(password, salt=None, rounds=None):
     salt = salt or secrets.token_hex(16)
-    h = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), bytes.fromhex(salt), PBKDF2_ROUNDS)
+    h = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), bytes.fromhex(salt), rounds or PBKDF2_ROUNDS)
     return h.hex(), salt
 
 
@@ -111,17 +154,20 @@ def _user_dict(row):
 
 
 def register_user(username, password, profile="general", display_name="", db_path="daruyar.db"):
-    username = (username or "").strip()
-    if not (3 <= len(username) <= 32) or len(password or "") < 6:
+    if not isinstance(username, str) or not isinstance(password, str):
+        raise ValueError("weak")
+    username = username.strip()
+    if not (3 <= len(username) <= 32) or not (6 <= len(password) <= MAX_PASSWORD):
         raise ValueError("weak")
     if profile not in PROFILES:
         profile = "general"
+    display_name = display_name.strip()[:40] if isinstance(display_name, str) else ""
     h, salt = hash_password(password)
     conn = connect(db_path)
     try:
         cur = conn.execute(
-            "INSERT INTO users (username, display_name, password_hash, salt, profile, created_at) VALUES (?,?,?,?,?,?)",
-            (username, display_name or username, h, salt, profile, schedule.utc_str()),
+            "INSERT INTO users (username, display_name, password_hash, salt, profile, created_at, pw_rounds) VALUES (?,?,?,?,?,?,?)",
+            (username, display_name or username, h, salt, profile, schedule.utc_str(), PBKDF2_ROUNDS),
         )
         conn.commit()
         row = conn.execute("SELECT * FROM users WHERE id=?", (cur.lastrowid,)).fetchone()
@@ -178,32 +224,57 @@ def update_profile(user_id, db_path="daruyar.db", **fields):
 
 
 def verify_login(username, password, db_path="daruyar.db"):
-    conn = connect(db_path)
-    row = conn.execute("SELECT * FROM users WHERE username=?", ((username or "").strip(),)).fetchone()
-    conn.close()
-    if not row:
-        hash_password(password or "x")  # زمان پاسخ را برابر نگه می‌دارد
+    if not isinstance(username, str) or not isinstance(password, str) or len(password) > MAX_PASSWORD:
         return None
-    h, _ = hash_password(password or "", row["salt"])
-    return _user_dict(row) if hmac.compare_digest(h, row["password_hash"]) else None
+    conn = connect(db_path)
+    try:
+        row = conn.execute("SELECT * FROM users WHERE username=?", (username.strip(),)).fetchone()
+        if not row:
+            hash_password(password or "x")  # زمان پاسخ را برابر نگه می‌دارد
+            return None
+        rounds = row["pw_rounds"] or LEGACY_PBKDF2_ROUNDS
+        h, _ = hash_password(password, row["salt"], rounds)
+        if not hmac.compare_digest(h, row["password_hash"]):
+            return None
+        if rounds < PBKDF2_ROUNDS:  # ارتقای بی‌صدای هش قدیمی به تعداد دور فعلی
+            nh, nsalt = hash_password(password)
+            conn.execute("UPDATE users SET password_hash=?, salt=?, pw_rounds=? WHERE id=?", (nh, nsalt, PBKDF2_ROUNDS, row["id"]))
+            conn.commit()
+        return _user_dict(row)
+    finally:
+        conn.close()
 
 
 def create_session(user_id, db_path="daruyar.db"):
+    """توکن تصادفی ۱۹۲بیتی؛ فقط SHA-256 آن در دیتابیس ذخیره می‌شود (نشت دیتابیس = نشت توکن فعال نیست)"""
     token = secrets.token_hex(24)
+    now = int(time.time())
     conn = connect(db_path)
-    conn.execute("INSERT INTO sessions (token, user_id, created_at) VALUES (?,?,?)", (token, str(user_id), int(time.time())))
+    conn.execute("DELETE FROM sessions WHERE created_at<=?", (now - SESSION_TTL,))  # پاک‌سازی نشست‌های منقضی
+    conn.execute("INSERT INTO sessions (token, user_id, created_at) VALUES (?,?,?)", (_tok_hash(token), str(user_id), now))
     conn.commit()
     conn.close()
     return token
 
 
+def revoke_session(token, db_path="daruyar.db"):
+    """خروج از حساب در سمت سرور؛ True اگر نشستی حذف شد"""
+    if not isinstance(token, str) or not token:
+        return False
+    conn = connect(db_path)
+    cur = conn.execute("DELETE FROM sessions WHERE token=?", (_tok_hash(token),))
+    conn.commit()
+    conn.close()
+    return cur.rowcount > 0
+
+
 def get_user_by_token(token, db_path="daruyar.db"):
-    if not token:
+    if not token or not isinstance(token, str):
         return None
     conn = connect(db_path)
     row = conn.execute(
         "SELECT u.* FROM sessions s JOIN users u ON u.id = CAST(s.user_id AS INTEGER) WHERE s.token=? AND s.created_at>?",
-        (token, int(time.time()) - SESSION_TTL),
+        (_tok_hash(token), int(time.time()) - SESSION_TTL),
     ).fetchone()
     conn.close()
     return _user_dict(row) if row else None
@@ -212,24 +283,33 @@ def get_user_by_token(token, db_path="daruyar.db"):
 def set_link_code(user_id, db_path="daruyar.db"):
     code = "".join(secrets.choice("ABCDEFGHJKLMNPQRSTUVWXYZ23456789") for _ in range(6))
     conn = connect(db_path)
-    conn.execute("UPDATE users SET link_code=? WHERE id=?", (code, int(user_id)))
+    conn.execute("UPDATE users SET link_code=?, link_code_at=? WHERE id=?", (code, int(time.time()), int(user_id)))
     conn.commit()
     conn.close()
     return code
 
 
 def link_bale(code, chat_id, db_path="daruyar.db"):
-    """اتصال چت بله به حساب با کد یک‌بارمصرف؛ کاربر یا None"""
-    code = (code or "").strip().upper()
+    """اتصال چت بله به حساب با کد یک‌بارمصرف (اعتبار ۱۰ دقیقه)؛ کاربر یا None"""
+    code = (code or "").strip().upper() if isinstance(code, str) else ""
     if len(code) != 6:
         return None
     conn = connect(db_path)
-    row = conn.execute("SELECT * FROM users WHERE link_code=?", (code,)).fetchone()
-    if row:
-        conn.execute("UPDATE users SET bale_chat_id=?, link_code=NULL WHERE id=?", (str(chat_id), row["id"]))
+    try:
+        row = conn.execute("SELECT * FROM users WHERE link_code=? AND link_code_at>?",
+                           (code, int(time.time()) - LINK_CODE_TTL)).fetchone()
+        if not row:
+            return None
+        cur = conn.execute("UPDATE users SET bale_chat_id=?, link_code=NULL WHERE id=? AND link_code=?",
+                           (str(chat_id), row["id"], code))
+        if cur.rowcount != 1:  # کد همزمان مصرف شد
+            return None
+        # یک چت فقط به یک حساب وصل باشد
+        conn.execute("UPDATE users SET bale_chat_id=NULL WHERE bale_chat_id=? AND id<>?", (str(chat_id), row["id"]))
         conn.commit()
-    conn.close()
-    return _user_dict(row) if row else None
+        return _user_dict(conn.execute("SELECT * FROM users WHERE id=?", (row["id"],)).fetchone())
+    finally:
+        conn.close()
 
 
 def find_user_by_chat(chat_id, db_path="daruyar.db"):
@@ -299,18 +379,18 @@ def list_meds_full(user_id, db_path="daruyar.db"):
 def upsert_meds(user_id, meds, db_path="daruyar.db"):
     """ادغام داروهای کلاینت (آخرین نوشتن برنده است؛ مقایسه با updated_at)"""
     conn = connect(db_path)
-    for m in meds or []:
-        cid = str(m.get("client_id") or "")[:64]
+    for m in _dicts(meds):
+        cid = clean_id(m.get("client_id"))
         if not cid or not m.get("name"):
             continue
-        ts = int(m.get("updated_at") or 0)
+        ts = _i(m.get("updated_at"), 0, INT_MAX)
         vals = (str(m["name"])[:100], str(m.get("drug_category") or "")[:120], str(m.get("dose") or "")[:60],
                 str(m.get("times_csv") or "08:00")[:60], str(m.get("meal_relation") or "")[:80],
-                int(m.get("duration_days") or 0), str(m.get("group") or "")[:20], 1 if m.get("deleted") else 0, ts,
-                str(m.get("start_date") or "")[:10], max(1, min(365, int(m.get("interval_days") or 1))),
+                _i(m.get("duration_days"), 0, 3650), str(m.get("group") or "")[:20], 1 if m.get("deleted") else 0, ts,
+                str(m.get("start_date") or "")[:10], _i(m.get("interval_days"), 1, 365, 1),
                 str(m.get("exercise_time") or "")[:5], str(m.get("allergy_notes") or "")[:500],
-                max(0, min(3650, int(m.get("review_after_days") or 0))),
-                str(m.get("file_id") or "")[:64], str(m.get("drug_form") or "")[:40], str(m.get("route") or "")[:40],
+                _i(m.get("review_after_days"), 0, 3650),
+                clean_id(m.get("file_id")), str(m.get("drug_form") or "")[:40], str(m.get("route") or "")[:40],
                 str(m.get("notes") or "")[:300])
         row = conn.execute("SELECT id, updated_at FROM medications WHERE user_id=? AND client_id=?", (str(user_id), cid)).fetchone()
         if row is None:
@@ -343,12 +423,12 @@ def list_files(user_id, db_path="daruyar.db"):
 def upsert_files(user_id, files, db_path="daruyar.db"):
     """ادغام پرونده‌های کلاینت (آخرین نوشتن برنده است). حذف پرونده، داروهایش را حذف نمی‌کند؛ از پرونده خارج می‌شوند."""
     conn = connect(db_path)
-    for f in files or []:
-        cid = str(f.get("client_id") or "")[:64]
+    for f in _dicts(files):
+        cid = clean_id(f.get("client_id"))
         title = str(f.get("title") or "").strip()[:60]
         if not cid or not title:
             continue
-        ts = int(f.get("updated_at") or 0)
+        ts = _i(f.get("updated_at"), 0, INT_MAX)
         deleted = 1 if f.get("deleted") else 0
         vals = (title, str(f.get("icon") or "")[:8], str(f.get("note") or "")[:300], deleted, ts)
         row = conn.execute("SELECT id, updated_at FROM health_files WHERE user_id=? AND client_id=?", (str(user_id), cid)).fetchone()
@@ -396,8 +476,8 @@ def log_medication_use(med_name, drug_category, dose, scheduled_time, status, cu
 
 
 def insert_logs(user_id, logs, db_path="daruyar.db"):
-    for l in logs or []:
-        cid = str(l.get("client_id") or "")[:64]
+    for l in _dicts(logs):
+        cid = clean_id(l.get("client_id"))
         if not cid or not l.get("med_name"):
             continue
         log_medication_use(
@@ -405,7 +485,7 @@ def insert_logs(user_id, logs, db_path="daruyar.db"):
             str(l.get("scheduled_time") or "")[:10], str(l.get("status") or "")[:80], str(l.get("persian_date") or "")[:12] or None,
             str(l.get("weekday_name") or "")[:20] or None, str(l.get("actual_time") or "")[:10] or None,
             db_path, user_id, str(l.get("meal_relation") or "")[:80], cid, str(l.get("group") or "")[:20],
-            str(l.get("file_id") or "")[:64])
+            clean_id(l.get("file_id")))
 
 
 def list_logs_full(user_id, db_path="daruyar.db"):

@@ -12,6 +12,7 @@ import server
 @pytest.fixture
 def api(tmp_path):
     config.WEBHOOK_SECRET = ""
+    config.ALLOW_OPEN_WEBHOOK = True  # فقط برای آزمون محلی؛ پیش‌فرض واقعی بسته است (tests/test_security.py)
     srv = server.make_server("127.0.0.1", 0, str(tmp_path / "api.db"))
     threading.Thread(target=srv.serve_forever, daemon=True).start()
     base = f"http://127.0.0.1:{srv.server_address[1]}"

@@ -76,10 +76,10 @@ def parse_frequency(text, default=1):
     t = to_ascii_digits(text or "").lower().strip()
     if not t:
         return default
-    m = re.search(r"هر\s*(\d+)\s*ساعت", t)
+    m = re.search(r"هر\s{0,3}(\d{1,3})\s{0,3}ساعت", t)
     if m and int(m.group(1)) > 0:
         return max(1, min(4, round(24 / int(m.group(1)))))
-    m = re.search(r"(\d+)\s*(?:بار|مرتبه|نوبت|times|x)", t) or re.search(r"روزی\s*(\d+)", t)
+    m = re.search(r"(\d{1,3})\s{0,3}(?:بار|مرتبه|نوبت|times|x)", t) or re.search(r"روزی\s{0,3}(\d{1,3})", t)
     if m:
         return max(1, min(4, int(m.group(1))))
     for word, n in _WORD_NUM.items():

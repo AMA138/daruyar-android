@@ -22,6 +22,8 @@
   };
 
   var D = null; // وابستگی‌هایی که برنامه در init می‌دهد
+  /** مقدار امن برای داخل onclick="...": رشته‌ی JSON + escape HTML روی کل عبارت */
+  function jsq(v) { return D.esc(JSON.stringify(String(v == null ? '' : v))); }
   var nowMs = function () { return D && D.now ? D.now() : Date.now(); };
   var store = function () { return (D && D.storage) || root.localStorage; };
   var hasDoc = function () { return typeof document !== 'undefined'; };
@@ -116,8 +118,8 @@
           ' <span class="muted">(' + f(e.lateMin) + ' دقیقه پیش)</span></div>' +
           '<label class="dy-small" for="' + id + '">اگر ساعت مصرف را می‌دانید (اختیاری)</label>' +
           '<input type="time" id="' + id + '" style="width:120px">' +
-          '<div class="row" style="margin-top:6px"><button class="btn" onclick="DyFeatures.ui.resolve(\'' + esc(e.key) + '\',true)">✅ مصرف کردم</button>' +
-          '<button class="btn sec" onclick="DyFeatures.ui.resolve(\'' + esc(e.key) + '\',false)">❌ نخوردم</button></div></div>';
+          '<div class="row" style="margin-top:6px"><button class="btn" onclick="DyFeatures.ui.resolve(' + jsq(e.key) + ',true)">✅ مصرف کردم</button>' +
+          '<button class="btn sec" onclick="DyFeatures.ui.resolve(' + jsq(e.key) + ',false)">❌ نخوردم</button></div></div>';
       }).join('') + '</div>';
   }
   function uiResolve(key, took) {
@@ -405,7 +407,7 @@
   function medExtrasHTML(m) {
     var esc = D.esc;
     return (m.critical ? '<span class="tag">⏱ حساس به ساعت</span>' : '') + (m.alias ? '<span class="tag">🏷 ' + esc(m.alias) + '</span>' : '') +
-      '<button class="chip dy-mini" onclick="DyFeatures.ui.askAlias(\'' + esc(m.client_id) + '\')">🏷 نام مستعار</button>';
+      '<button class="chip dy-mini" onclick="DyFeatures.ui.askAlias(' + jsq(m.client_id) + ')">🏷 نام مستعار</button>';
   }
   function criticalCheckboxHTML(form) {
     return '<label class="dy-chk"><input type="checkbox" ' + (form && form.critical ? 'checked' : '') + ' onchange="ui.form.critical=this.checked"> داروی حساس به ساعت (بدون تعویق؛ مثل صرع و پارکینسون)</label>';
@@ -433,7 +435,7 @@
       var med = D.getState().meds.filter(function (m) { return m.client_id === id; })[0]; if (!med) return;
       modal('<h3>🏷 نام مستعار برای «' + D.esc(med.name) + '»</h3><input id="dyAl" maxlength="' + CFG.ALIAS_MAX + '" value="' + D.esc(med.alias || '') + '" placeholder="مثلاً: قرص صبح">' +
         '<div class="muted dy-small">نام مستعار نباید شامل نام واقعی دارو باشد. در گزارش پزشک نام واقعی همیشه نشان داده می‌شود.</div><div id="dyAlE" class="dy-msg"></div>' +
-        '<div class="row" style="margin-top:8px"><button class="btn" onclick="DyFeatures.ui.saveAlias(\'' + D.esc(id) + '\')">ذخیره</button><button class="btn sec" onclick="DyFeatures.ui.saveAlias(\'' + D.esc(id) + '\',true)">حذف</button></div>');
+        '<div class="row" style="margin-top:8px"><button class="btn" onclick="DyFeatures.ui.saveAlias(' + jsq(id) + ')">ذخیره</button><button class="btn sec" onclick="DyFeatures.ui.saveAlias(' + jsq(id) + ',true)">حذف</button></div>');
     },
     saveAlias: function (id, remove) {
       var v = remove ? '' : (document.getElementById('dyAl') || {}).value, r = setAlias(id, v);

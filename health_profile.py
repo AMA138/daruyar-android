@@ -15,6 +15,11 @@ MAX_ITEMS, MAX_LEN, MAX_NOTES = 30, 80, 500
 _PHONE_RE = re.compile(r"^\+?\d{7,15}$")
 
 
+def _ts(value):
+    import db
+    return db._i(value, 1, db.INT_MAX, int(time.time() * 1000))
+
+
 def clean_list(value):
     """فهرست رشته‌ها: تمیز، بدون تکرار، حداکثر ۳۰ مورد و هر مورد ۸۰ نویسه"""
     out = []
@@ -56,7 +61,7 @@ def save_profile(user_id, data, db_path):
     consented=false → حذف (tombstone). آخرین updated_at برنده؛ خروجی: پرونده‌ی فعلی یا None.
     """
     data = data or {}
-    ts = int(data.get("updated_at") or int(time.time() * 1000))
+    ts = _ts(data.get("updated_at"))
     conn = f2db.connect(db_path)
     try:
         row = conn.execute("SELECT updated_at FROM health_profile WHERE user_id=?", (str(user_id),)).fetchone()

@@ -55,7 +55,7 @@ def test_page_script_is_valid_javascript():
         open_path = os.path.join(d, "page.js")
         with open(open_path, "w", encoding="utf-8") as f:
             f.write(scripts[-1])
-        r = subprocess.run(["node", "--check", open_path], capture_output=True, text=True)
+        r = subprocess.run(["node", "--check", open_path], capture_output=True, encoding="utf-8", errors="replace")
         assert r.returncode == 0, r.stderr
 
 

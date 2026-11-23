@@ -6,6 +6,7 @@ import math
 import re
 import time
 
+import db
 import f2db
 import schedule
 from schedule import to_ascii_digits
@@ -90,7 +91,7 @@ def save_settings(user_id, data, db_path, strict=True):
         if strict:
             raise
         return get_settings(user_id, db_path)
-    ts = int((data or {}).get("updated_at") or int(time.time() * 1000))
+    ts = db._i((data or {}).get("updated_at"), 1, db.INT_MAX, int(time.time() * 1000))
     conn = f2db.connect(db_path)
     try:
         row = conn.execute("SELECT updated_at FROM water_settings WHERE user_id=?", (str(user_id),)).fetchone()
@@ -120,7 +121,7 @@ def add_logs(user_id, logs, db_path, strict=False):
             try:
                 if not isinstance(l, dict):
                     raise ValueError("log")
-                cid = str(l.get("client_id") or "")[:64]
+                cid = db.clean_id(l.get("client_id"))
                 if not cid:
                     raise ValueError("log")
                 amount = _int(l.get("amount_ml"), 10, 3000)
@@ -135,7 +136,7 @@ def add_logs(user_id, logs, db_path, strict=False):
                 hm = _hm(l.get("time_hm"))
             except ValueError:
                 hm = schedule.tehran_now().strftime("%H:%M")
-            ts = int(l.get("updated_at") or int(time.time() * 1000))
+            ts = db._i(l.get("updated_at"), 1, db.INT_MAX, int(time.time() * 1000))
             deleted = 1 if l.get("deleted") else 0
             row = conn.execute("SELECT updated_at FROM water_logs WHERE user_id=? AND client_id=?", (str(user_id), cid)).fetchone()
             if row is None:

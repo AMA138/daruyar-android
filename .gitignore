@@ -7,3 +7,14 @@ build/
 android/assets/
 *.apk
 *.jks
+*.keystore
+*.p12
+*.pem
+*.key
+.env.*
+!.env.example
+*.db-journal
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3

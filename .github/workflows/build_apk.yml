@@ -4,6 +4,9 @@ on:
     branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: read   # کمترین دسترسی لازم برای توکن workflow
+
 jobs:
   apk:
     runs-on: ubuntu-latest
@@ -37,9 +40,11 @@ jobs:
           "$BT/aapt" package -f -M android/AndroidManifest.xml -S android/res -A android/assets -I "$JAR" -F build/unsigned.apk
           (cd build && "$BT/aapt" add unsigned.apk classes.dex)
           "$BT/zipalign" -f -p 4 build/unsigned.apk build/aligned.apk
-          keytool -genkeypair -keystore build/debug.jks -storepass daruyar123 -keypass daruyar123 \
+          # رمز تصادفیِ یک‌بارمصرف برای کلید موقت این ساخت (دیگر رمز ثابت در مخزن عمومی نیست)
+          KS_PASS="$(openssl rand -hex 16)"; echo "::add-mask::$KS_PASS"
+          keytool -genkeypair -keystore build/debug.jks -storepass "$KS_PASS" -keypass "$KS_PASS" \
             -alias daruyar -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Daruyar"
-          "$BT/apksigner" sign --ks build/debug.jks --ks-pass pass:daruyar123 --key-pass pass:daruyar123 \
+          "$BT/apksigner" sign --ks build/debug.jks --ks-pass "pass:$KS_PASS" --key-pass "pass:$KS_PASS" \
             --out Daruyar.apk build/aligned.apk
           "$BT/apksigner" verify Daruyar.apk
 

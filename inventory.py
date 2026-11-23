@@ -7,6 +7,7 @@ import math
 import re
 import time
 
+import db
 import f2db
 import messages2
 from schedule import to_ascii_digits
@@ -29,7 +30,7 @@ def _num(value, lo, hi):
 
 def _clean(item):
     """یک ورودی را تمیز و اعتبارسنجی می‌کند؛ ValueError('stock') برای مقدار نامعتبر"""
-    mid = str(item.get("med_client_id") or "")[:64]
+    mid = db.clean_id(item.get("med_client_id"))
     if not mid:
         raise ValueError("stock")
     return {
@@ -39,7 +40,7 @@ def _clean(item):
         "unit": (str(item.get("unit") or DEFAULT_UNIT).strip() or DEFAULT_UNIT)[:20],
         "low_days": int(_num(item.get("low_days", DEFAULT_LOW_DAYS), 1, 60)),
         "deleted": 1 if item.get("deleted") else 0,
-        "updated_at": int(item.get("updated_at") or int(time.time() * 1000)),
+        "updated_at": db._i(item.get("updated_at"), 1, db.INT_MAX, int(time.time() * 1000)),
     }
 
 

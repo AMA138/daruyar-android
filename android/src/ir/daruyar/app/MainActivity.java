@@ -25,6 +25,7 @@ import android.os.SystemClock;
 import android.hardware.biometrics.BiometricPrompt;
 import android.view.Window;
 import android.webkit.JavascriptInterface;
+import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
@@ -77,10 +78,21 @@ public class MainActivity extends Activity {
         WebSettings s = web.getSettings();
         s.setJavaScriptEnabled(true);
         s.setDomStorageEnabled(true);
-        s.setAllowFileAccess(true);
+        // صفحه فقط از assets بارگذاری می‌شود (file:///android_asset/ مستقل از این گزینه‌هاست)؛ دسترسی به بقیه‌ی فایل‌ها/محتوا بسته می‌شود
+        s.setAllowFileAccess(false);
+        s.setAllowContentAccess(false);
+        s.setAllowFileAccessFromFileURLs(false);
+        s.setAllowUniversalAccessFromFileURLs(false);
         s.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
         web.addJavascriptInterface(new Bridge(), "AndroidBridge");
         web.setWebViewClient(new WebViewClient() {
+            /** پل AndroidBridge فقط باید به صفحه‌ی خود برنامه دسترسی داشته باشد؛ هر ناوبری به آدرس دیگر مسدود می‌شود */
+            @Override
+            public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
+                String u = request.getUrl().toString();
+                return !u.startsWith("file:///android_asset/");
+            }
+
             @Override
             public void onPageFinished(WebView view, String url) {
                 pageReady = true;

@@ -11,7 +11,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 
 
 def _node(*args):
-    return subprocess.run(["node"] + list(args), capture_output=True, text=True, timeout=120, cwd=HERE)
+    return subprocess.run(["node"] + list(args), capture_output=True, encoding="utf-8", errors="replace", timeout=120, cwd=HERE)
 
 
 def test_dy_logic_tests_pass():

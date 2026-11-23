@@ -1,14 +1,21 @@
 """
 server.py - سرور REST دارویار (فقط کتابخانه‌ی استاندارد؛ Windows / Linux / Pydroid 3)
-  python server.py            # اجرا روی DARUYAR_HOST:DARUYAR_PORT
-اندپوینت‌ها: /api/register /api/login /api/me /api/sync /api/meds /api/logs /api/parse
+  python server.py            # اجرا روی DARUYAR_HOST:DARUYAR_PORT (پیش‌فرض: فقط 127.0.0.1)
+اندپوینت‌ها: /api/register /api/login /api/logout /api/me /api/sync /api/meds /api/logs /api/parse
              /api/consent /api/profile /api/link_code /api/delete_me /api/bale_webhook /api/drugs /api/health
+امنیت: هدرهای امنیتی، CORS محدود، محدودیت نرخ (ورود/ثبت‌نام/پارس/لینک بله)، خطای عمومی (بدون نشت جزئیات داخلی)،
+       وب‌هوک بسته‌ی پیش‌فرض (بدون WEBHOOK_SECRET رد می‌شود)، نشست‌های هش‌شده.
 """
 import base64
+import hmac
 import json
+import logging
 import os
 import re
+import threading
+import time
 import urllib.parse
+import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import bale_client
@@ -19,9 +26,75 @@ import med_parser
 import messages
 import schedule
 
+log = logging.getLogger("daruyar")
+
 WEB_DIR = os.path.join(config.BASE_DIR, "web")
-USERNAME_RE = re.compile(r"^[\w.@+\-]{3,32}$")
+USERNAME_RE = re.compile(r"[\w.@+\-]{3,32}")
 MAX_BODY = 1_000_000
+MAX_PARSE_CHARS = 5000
+MAX_BALE_TEXT = 5000
+# (تعداد مجاز، پنجره به ثانیه) — برای تنظیم سریع در یک جا
+LIMITS = {
+    "login_ip_user": (5, 900),    # ورود ناموفق برای یک نام کاربری از یک IP
+    "login_user": (20, 900),      # ورود ناموفق برای یک نام کاربری از هر IP (ضد حمله‌ی توزیع‌شده)
+    "login_ip": (30, 900),        # ورود ناموفق از یک IP با هر نام کاربری
+    "register_ip": (20, 3600),
+    "parse_ip": (60, 60),
+    "link_chat": (5, 600),        # تلاش /link برای هر چت بله
+    "link_all": (60, 600),        # تلاش /link در کل
+}
+CSP = ("default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; "
+       "font-src data:; media-src data: blob:; connect-src 'self'; base-uri 'none'; form-action 'none'; "
+       "frame-ancestors 'none'; object-src 'none'")
+
+
+class RateLimiter:
+    """محدودکننده‌ی نرخ در حافظه (پنجره‌ی لغزان، امن برای چند نخ). با ری‌استارت سرور صفر می‌شود."""
+
+    def __init__(self):
+        self._hits = {}
+        self._lock = threading.Lock()
+        self._ops = 0
+
+    def _live(self, key, window, now):
+        hits = [t for t in self._hits.get(key, ()) if now - t < window]
+        if hits:
+            self._hits[key] = hits
+        else:
+            self._hits.pop(key, None)
+        return hits
+
+    def _sweep(self, now):
+        self._ops += 1
+        if self._ops % 500 == 0:  # جلوگیری از رشد بی‌پایان حافظه
+            for k in [k for k, v in self._hits.items() if not v or now - v[-1] > 3600]:
+                self._hits.pop(k, None)
+
+    def blocked(self, key, limit, window):
+        """آیا تعداد برخوردهای ثبت‌شده به سقف رسیده؟ (بدون ثبت برخورد جدید)"""
+        now = time.time()
+        with self._lock:
+            self._sweep(now)
+            return len(self._live(key, window, now)) >= limit
+
+    def hit(self, key):
+        with self._lock:
+            self._hits.setdefault(key, []).append(time.time())
+
+    def allow(self, key, limit, window):
+        """ثبت یک برخورد؛ False اگر از سقف گذشته باشد"""
+        now = time.time()
+        with self._lock:
+            self._sweep(now)
+            hits = self._live(key, window, now)
+            if len(hits) >= limit:
+                return False
+            self._hits.setdefault(key, []).append(now)
+            return True
+
+    def reset(self, key):
+        with self._lock:
+            self._hits.pop(key, None)
 
 
 def client_config():
@@ -51,11 +124,17 @@ def render_index(drugs=None, cfg=None):
 
 
 # ------------------------------------------------------------------ بات بله / n8n
-def handle_bale_update(update, db_path, send=None):
+def handle_bale_update(update, db_path, send=None, limiter=None):
     """پردازش یک update شبیه تلگرام (یا {chat_id, text} ساده از n8n). خروجی: {ok, reply, added}"""
+    update = update if isinstance(update, dict) else {}
     msg = update.get("message") or update.get("edited_message") or {}
-    text = (msg.get("text") or update.get("text") or "").strip()
-    chat = (msg.get("chat") or {}).get("id") or update.get("chat_id")
+    msg = msg if isinstance(msg, dict) else {}
+    text = msg.get("text") or update.get("text") or ""
+    text = text.strip()[:MAX_BALE_TEXT] if isinstance(text, str) else ""
+    chat_obj = msg.get("chat")
+    chat = (chat_obj.get("id") if isinstance(chat_obj, dict) else None) or update.get("chat_id")
+    if isinstance(chat, bool) or not isinstance(chat, (int, str)) or len(str(chat)) > 32:
+        chat = None
     if not chat or not text:
         return {"ok": True, "reply": None, "added": 0}
     chat = str(chat)
@@ -64,9 +143,13 @@ def handle_bale_update(update, db_path, send=None):
     if cmd in ("/start", "/help"):
         reply = messages.WELCOME if cmd == "/start" else messages.HELP
     elif cmd == "/link":
-        parts = text.split()
-        user = db.link_bale(parts[1] if len(parts) > 1 else "", chat, db_path)
-        reply = messages.LINK_OK if user else messages.LINK_FAIL
+        if limiter is not None and not (limiter.allow(("link", chat), *LIMITS["link_chat"])
+                                        and limiter.allow(("link", "*"), *LIMITS["link_all"])):
+            reply = messages.RATE_LIMITED
+        else:
+            parts = text.split()
+            user = db.link_bale(parts[1] if len(parts) > 1 else "", chat, db_path)
+            reply = messages.LINK_OK if user else messages.LINK_FAIL
     else:
         user = db.find_user_by_chat(chat, db_path)
         if not user:
@@ -82,8 +165,6 @@ def handle_bale_update(update, db_path, send=None):
             if not found:
                 reply = messages.PARSE_EMPTY
             else:
-                import time
-                import uuid
                 now = int(time.time() * 1000)
                 db.upsert_meds(user["id"], [dict(m, client_id="bale-" + uuid.uuid4().hex[:12], updated_at=now) for m in found], db_path)
                 added = len(found)
@@ -95,36 +176,101 @@ def handle_bale_update(update, db_path, send=None):
 
 # ------------------------------------------------------------------ HTTP
 class Handler(BaseHTTPRequestHandler):
-    server_version = "Daruyar/2"
+    server_version = "Daruyar"
+    sys_version = ""
+    timeout = 15  # ثانیه؛ اتصال‌های کند/نیمه‌باز (slowloris) رها می‌شوند
+
+    def version_string(self):
+        return "Daruyar"
 
     def log_message(self, fmt, *args):
         if os.environ.get("DARUYAR_VERBOSE"):
+            # راز وب‌هوک در query نباید وارد لاگ شود
+            args = tuple(re.sub(r"(secret=)[^&\s]+", r"\1***", a) if isinstance(a, str) else a for a in args)
             super().log_message(fmt, *args)
 
     # --- کمکی‌ها
-    def _send(self, code, obj=None, raw=None, ctype="application/json; charset=utf-8"):
+    def _ip(self):
+        if config.TRUST_PROXY:
+            fwd = self.headers.get("X-Forwarded-For", "")
+            if fwd.strip():
+                return fwd.split(",")[-1].strip()[:64]
+        return self.client_address[0]
+
+    def _cors_origin(self):
+        """مبدأ مجاز یا None. «null» = WebView اپ اندروید (file://)؛ بقیه فقط از فهرست یا همان میزبان."""
+        origin = self.headers.get("Origin")
+        if not origin:
+            return None
+        if origin == "null" or origin in config.CORS_ORIGINS:
+            return origin
+        host = self.headers.get("Host")
+        if host and urllib.parse.urlparse(origin).netloc == host:
+            return origin
+        return None
+
+    def _send(self, code, obj=None, raw=None, ctype="application/json; charset=utf-8", extra=None):
         body = raw if raw is not None else json.dumps(obj if obj is not None else {}, ensure_ascii=False).encode("utf-8")
         self.send_response(code)
         self.send_header("Content-Type", ctype)
         self.send_header("Content-Length", str(len(body)))
-        self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization")
-        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        origin = self._cors_origin()
+        if origin:
+            self.send_header("Access-Control-Allow-Origin", origin)
+            self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization")
+            self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+            self.send_header("Access-Control-Max-Age", "600")
+            self.send_header("Vary", "Origin")
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("X-Frame-Options", "DENY")
+        self.send_header("Referrer-Policy", "no-referrer")
+        self.send_header("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=()")
+        self.send_header("Cache-Control", "no-store")
+        if ctype.startswith("text/html"):
+            self.send_header("Content-Security-Policy", CSP)
+            self.send_header("Cross-Origin-Opener-Policy", "same-origin")
+        if config.BEHIND_HTTPS:
+            self.send_header("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+        for k, v in (extra or {}).items():
+            self.send_header(k, v)
         self.end_headers()
-        self.wfile.write(body)
+        if raw != b"" or code != 204:
+            self.wfile.write(body)
+
+    def _limited(self):
+        return 429, {"error": messages.RATE_LIMITED}
+
+    def _fail(self, exc):
+        """خطای پیش‌بینی‌نشده: جزئیات فقط در لاگ سرور؛ به کلاینت پیام عمومی"""
+        log.error("unhandled error on %s %s", self.command, urllib.parse.urlparse(self.path).path, exc_info=exc)
+        try:
+            self._send(500, {"error": messages.SERVER_ERROR})
+        except OSError:
+            pass
 
     def _json(self):
-        n = int(self.headers.get("Content-Length") or 0)
+        try:
+            n = int(self.headers.get("Content-Length") or 0)
+        except ValueError:
+            raise ValueError("json")
+        if n < 0:
+            raise ValueError("json")
         if n > MAX_BODY:
             raise ValueError("big")
         try:
-            return json.loads(self.rfile.read(n).decode("utf-8") or "{}") if n else {}
-        except json.JSONDecodeError:
+            data = json.loads(self.rfile.read(n).decode("utf-8") or "{}") if n else {}
+        except (json.JSONDecodeError, UnicodeDecodeError):
             raise ValueError("json")
+        if not isinstance(data, dict):
+            raise ValueError("json")
+        return data
+
+    def _token(self):
+        auth = self.headers.get("Authorization", "")
+        return auth[7:].strip() if auth.startswith("Bearer ") else ""
 
     def _user(self):
-        auth = self.headers.get("Authorization", "")
-        return db.get_user_by_token(auth[7:] if auth.startswith("Bearer ") else "", self.server.db_path)
+        return db.get_user_by_token(self._token(), self.server.db_path)
 
     def do_OPTIONS(self):
         self._send(204, raw=b"")
@@ -149,49 +295,75 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(*res)
             self._send(404, {"error": "not found"})
         except Exception as exc:
-            self._send(500, {"error": str(exc)})
+            self._fail(exc)
 
     def do_POST(self):
         path = urllib.parse.urlparse(self.path).path
         try:
             data = self._json()
         except ValueError as exc:
-            return self._send(400, {"error": f"درخواست نامعتبر ({exc})"})
-        dbp = self.server.db_path
+            if str(exc) == "big":
+                return self._send(413, {"error": messages.BAD_REQUEST})
+            return self._send(400, {"error": messages.BAD_REQUEST})
+        dbp, lim, ip = self.server.db_path, self.server.limiter, self._ip()
         try:
             if path == "/api/register":
-                name = (data.get("username") or "").strip()
-                if not USERNAME_RE.match(name) or len(data.get("password") or "") < 6:
+                if not lim.allow(("register", ip), *LIMITS["register_ip"]):
+                    return self._send(429, {"error": messages.RATE_LIMITED}, extra={"Retry-After": "600"})
+                name, pwd = data.get("username"), data.get("password")
+                if (not isinstance(name, str) or not isinstance(pwd, str) or not USERNAME_RE.fullmatch(name.strip())
+                        or not (6 <= len(pwd) <= db.MAX_PASSWORD)):
                     return self._send(400, {"error": messages.AUTH_WEAK})
+                profile = data.get("profile", "general")
                 try:
-                    user = db.register_user(name, data["password"], data.get("profile", "general"), data.get("display_name", ""), dbp)
+                    user = db.register_user(name, pwd, profile if isinstance(profile, str) else "general", data.get("display_name", ""), dbp)
                 except ValueError as exc:
                     return self._send(409 if str(exc) == "exists" else 400,
                                       {"error": messages.AUTH_EXISTS if str(exc) == "exists" else messages.AUTH_WEAK})
                 db.set_user_consent(user["id"], dbp)
                 return self._send(201, {"token": db.create_session(user["id"], dbp), "user": user})
             if path == "/api/login":
-                user = db.verify_login(data.get("username"), data.get("password"), dbp)
+                uname, pwd = data.get("username"), data.get("password")
+                ukey = (uname.strip().lower()[:64] if isinstance(uname, str) else "")
+                k_iu, k_u, k_i = ("login", ip, ukey), ("login-user", ukey), ("login-ip", ip)
+                if (lim.blocked(k_iu, *LIMITS["login_ip_user"]) or lim.blocked(k_u, *LIMITS["login_user"])
+                        or lim.blocked(k_i, *LIMITS["login_ip"])):
+                    return self._send(429, {"error": messages.RATE_LIMITED}, extra={"Retry-After": "300"})
+                user = db.verify_login(uname, pwd, dbp)
                 if not user:
+                    for k in (k_iu, k_u, k_i):
+                        lim.hit(k)
                     return self._send(401, {"error": messages.AUTH_BAD})
+                lim.reset(k_iu)
                 return self._send(200, {"token": db.create_session(user["id"], dbp), "user": user})
             if path == "/api/bale_webhook":
                 secret = config.WEBHOOK_SECRET
                 given = self.headers.get("X-Webhook-Secret") or urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query).get("secret", [""])[0]
-                if secret and given != secret:
+                if secret:
+                    if not hmac.compare_digest(given.encode("utf-8"), secret.encode("utf-8")):
+                        return self._send(403, {"error": "forbidden"})
+                elif not config.ALLOW_OPEN_WEBHOOK:
+                    # بسته‌ی پیش‌فرض: بدون راز، هر کسی می‌توانست با chat_id جعلی داروها را بخواند/حذف کند یا از بات هرزنامه بفرستد
                     return self._send(403, {"error": "forbidden"})
                 send = bale_client.send_message if config.BALE_TOKEN else None
-                return self._send(200, handle_bale_update(data, dbp, send))
+                return self._send(200, handle_bale_update(data, dbp, send, lim))
             if path == "/api/parse":  # بدون ورود هم کار می‌کند؛ فقط متن را تحلیل می‌کند و چیزی ذخیره نمی‌کند
-                return self._send(200, {"meds": med_parser.parse_prescription(str(data.get("text", ""))[:20000])})
+                if not lim.allow(("parse", ip), *LIMITS["parse_ip"]):
+                    return self._send(429, {"error": messages.RATE_LIMITED}, extra={"Retry-After": "60"})
+                return self._send(200, {"meds": med_parser.parse_prescription(str(data.get("text", ""))[:MAX_PARSE_CHARS])})
 
             user = self._user()
             if not user:
                 return self._send(401, {"error": messages.AUTH_BAD})
+            if path == "/api/logout":
+                db.revoke_session(self._token(), dbp)
+                return self._send(200, {"ok": True})
             res = features2.route("POST", path, data, user, dbp)
             if res:
                 return self._send(*res)
             if path == "/api/sync":
+                if any(isinstance(data.get(k), list) and len(data[k]) > db.MAX_SYNC_ITEMS for k in ("meds", "logs", "files")):
+                    return self._send(413, {"error": messages.BAD_REQUEST})
                 db.upsert_files(user["id"], data.get("files"), dbp)   # قبل از داروها: حذف پرونده داروها را آزاد می‌کند
                 db.upsert_meds(user["id"], data.get("meds"), dbp)
                 db.insert_logs(user["id"], data.get("logs"), dbp)
@@ -214,7 +386,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, {"ok": True, "message": messages.DELETED})
             self._send(404, {"error": "not found"})
         except Exception as exc:
-            self._send(500, {"error": str(exc)})
+            self._fail(exc)
 
     def _state(self, user):
         dbp, uid = self.server.db_path, user["id"]
@@ -230,13 +402,19 @@ class Handler(BaseHTTPRequestHandler):
 def make_server(host=None, port=None, db_path=None):
     srv = ThreadingHTTPServer((host or config.HOST, config.PORT if port is None else port), Handler)
     srv.db_path = db_path or config.DB_PATH
+    srv.limiter = RateLimiter()
     db.init_db(srv.db_path)
     return srv
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     srv = make_server()
     print(f"دارویار روی http://{config.HOST}:{srv.server_address[1]} در حال اجراست (Ctrl+C برای توقف)")
+    if config.HOST not in ("127.0.0.1", "localhost", "::1"):
+        print("⚠ سرور روی شبکه باز است و ارتباط HTTP رمزنگاری نمی‌شود؛ فقط در شبکه‌ی مورد اعتماد یا پشت HTTPS استفاده کنید.")
+    if config.WEBHOOK_SECRET == "" and config.BALE_TOKEN:
+        print("⚠ WEBHOOK_SECRET خالی است؛ وب‌هوک بله/n8n رد می‌شود تا راز تنظیم شود.")
     try:
         srv.serve_forever()
     except KeyboardInterrupt:

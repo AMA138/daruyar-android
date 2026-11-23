@@ -164,5 +164,5 @@ def test_page_script_still_valid_js():
     with tempfile.TemporaryDirectory() as d:
         fp = os.path.join(d, "page.js")
         open(fp, "w", encoding="utf-8").write(script)
-        r = subprocess.run(["node", "--check", fp], capture_output=True, text=True)
+        r = subprocess.run(["node", "--check", fp], capture_output=True, encoding="utf-8", errors="replace")
         assert r.returncode == 0, r.stderr

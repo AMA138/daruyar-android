@@ -704,6 +704,8 @@ const LOGO = `<img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAKAAAACgCA
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+// مقدار امن برای داخل onclick="...": رشته‌ی JSON (با escape کامل جاوااسکریپت) و سپس escape HTML روی کل عبارت
+const jsq = (v) => esc(JSON.stringify(String(v ?? "")));
 const uid = () => "c" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 const faNum = (n) => String(n).replace(/\d/g, (d) => "۰۱۲۳۴۵۶۷۸۹"[d]);
 
@@ -727,12 +729,24 @@ function toast(msg) {
 }
 
 /* ---------- سرور ---------- */
+/* آدرس سرور: https:// همیشه مجاز؛ http:// فقط برای شبکه‌ی محلی (localhost و IPهای خصوصی). غیر از این رد می‌شود تا توکن و داروها روی اینترنت بدون رمزنگاری نروند. */
+function safeServerUrl(u) {
+  u = String(u || "").trim().replace(/\/+$/, "");
+  if (!u) return "";
+  let x; try { x = new URL(u); } catch (e) { return null; }
+  if (x.username || x.password || (x.pathname && x.pathname !== "/") || x.search || x.hash) return null;
+  if (x.protocol === "https:") return x.origin;
+  if (x.protocol !== "http:") return null;
+  const h = x.hostname, m = h.match(/^(\d+)\.(\d+)\.(\d+)\.(\d+)$/);
+  const priv = h === "localhost" || h.endsWith(".local") || (m && (m[1] === "127" || m[1] === "10" || (m[1] === "192" && m[2] === "168") || (m[1] === "172" && +m[2] >= 16 && +m[2] <= 31)));
+  return priv ? x.origin : null;
+}
 function base() {
-  if (st.server) return st.server.replace(/\/+$/, "");
+  if (st.server) return safeServerUrl(st.server);
   return location.protocol.startsWith("http") ? "" : null;
 }
 async function api(path, method = "GET", body) {
-  const b = base(); if (b === null) throw Object.assign(new Error("آدرس سرور تنظیم نشده است"), {offline: true});
+  const b = base(); if (b === null) throw Object.assign(new Error(st.server ? "آدرس سرور نامعتبر یا ناامن است (http فقط برای شبکه‌ی محلی؛ برای اینترنت از https استفاده کنید)" : "آدرس سرور تنظیم نشده است"), {offline: true});
   const h = {"Content-Type": "application/json"}; if (st.token) h.Authorization = "Bearer " + st.token;
   const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 8000);
   try {
@@ -997,7 +1011,7 @@ async function doAuth() {
   } catch (e) { ui.err = e.offline ? "اتصال به سرور برقرار نشد. آدرس سرور را بررسی کنید یا «ادامه بدون سرور» را بزنید." : e.message; render(); }
 }
 function guest() { st.guest = true; st.user = {username: "مهمان", profile: "general", display_name: "مهمان"}; save(); render(); }
-function logout() { NF.reset(); st.token = null; st.user = null; st.guest = false; st.meds = []; st.logs = []; st.files = []; ui.sheet = false; save(); render(); }
+function logout() { if (st.token) { api("/api/logout", "POST").catch(() => {}); } NF.reset(); st.token = null; st.user = null; st.guest = false; st.meds = []; st.logs = []; st.files = []; ui.sheet = false; save(); render(); }
 /* پنجره‌ی تأیید داخل صفحه؛ تأیید بومی مرورگر در WebView اندروید بدون WebChromeClient کار نمی‌کند */
 function askConfirm(title, msg, okLabel, fn) {
   const o = document.createElement("div"); o.className = "cfm"; o.setAttribute("role", "alertdialog");
@@ -1089,7 +1103,7 @@ function fileSelect(id, cur, onch) {
 function fileChips(cur, setter, withNone) {
   const fs = activeFiles(); if (!fs.length) return "";
   const hasNone = withNone && st.meds.some((m) => !m.deleted && !m.file_id);
-  const chip = (id, t) => `<button class="pill ${cur === id ? "on" : ""}" onclick="${setter}('${esc(id)}')">${t}</button>`;
+  const chip = (id, t) => `<button class="pill ${cur === id ? "on" : ""}" onclick="${setter}(${jsq(id)})">${t}</button>`;
   return `<div class="fchips" role="tablist" aria-label="پرونده‌ها">${chip("", "همه")}${fs.map((f) => chip(f.client_id, esc(f.icon) + " " + esc(f.title))).join("")}${hasNone ? chip("_none", "بدون پرونده") : ""}</div>`;
 }
 function setFileF(id) { ui.fileF = id; render(); }
@@ -1110,7 +1124,7 @@ function medCard(m) {
   <div class="tags">${times}<span class="tag">🍽 ${esc(m.meal_relation || "—")}</span>${stock}${m.interval_days>1?`<span class="tag">هر ${faNum(m.interval_days)} روز</span>`:""}${m.drug_form ? `<span class="tag">💊 ${esc(m.drug_form)}</span>` : ""}${m.route ? `<span class="tag">📍 ${esc(m.route)}</span>` : ""}${fileTitle(m.file_id) ? `<span class="tag f">🗂 ${esc(fileTitle(m.file_id))}</span>` : ""}${DyFeatures.medExtrasHTML(m)}</div>${m.notes ? `<div class="muted" style="margin-top:4px">📝 ${esc(m.notes)}</div>` : ""}
   ${m.group === "sport" ? `<p class="muted">💧 یادآوری: آب کافی در طول روز، به‌ویژه کنار کراتین/الکترولیت</p>${supplementWarnings(m).map(w=>`<p class="muted">${esc(w)}</p>`).join("")}` : ""}
   ${m.review_after_days>0?`<p class="muted">🔎 ${reviewDue(m)?"زمان بازبینی این برنامه رسیده است؛ با پزشک/داروساز مرور کنید.":`یادآوری بازبینی پس از ${faNum(m.review_after_days)} روز از شروع مصرف`}</p>`:""}</div>
-  <button class="x" onclick="editMed('${esc(m.client_id)}')" aria-label="ویرایش ${esc(m.name)}">✏️</button><button class="x" onclick="delMed('${esc(m.client_id)}')" aria-label="حذف ${esc(m.name)}">🗑</button></div>`;
+  <button class="x" onclick="editMed(${jsq(m.client_id)})" aria-label="ویرایش ${esc(m.name)}">✏️</button><button class="x" onclick="delMed(${jsq(m.client_id)})" aria-label="حذف ${esc(m.name)}">🗑</button></div>`;
 }
 function viewToday() {
   const all = st.meds.filter((m) => !m.deleted), f = ui.filter, meds = all.filter((m) => (!f || m.group === f) && inFile(m, ui.fileF));
@@ -1222,7 +1236,7 @@ function submitManual() {
 function mealHint() {
   const u = st.user || {};
   if (!u.wake_time && !u.lunch_time && !u.dinner_time) return `<p class="muted" style="margin:6px 0 0">می‌توانید در تب «پروفایل» ساعت تقریبی بیداری، ناهار و شام را ثبت کنید تا اینجا برای انتخاب ساعت پیشنهاد شود.</p>`;
-  const b = (ic, t, v) => v ? `<button type="button" class="btn sec small" onclick="useMeal('${esc(v)}')">${ic} ${t} من (${faNum(v)})</button>` : "";
+  const b = (ic, t, v) => v ? `<button type="button" class="btn sec small" onclick="useMeal(${jsq(v)})">${ic} ${t} من (${faNum(v)})</button>` : "";
   return `<div class="row" style="margin-top:8px">${b("☀️", "بیداری", u.wake_time)}${b("🍽", "ناهار", u.lunch_time)}${b("🌙", "شام", u.dinner_time)}</div>
    <p class="muted" style="margin:4px 0 0">ابتدا کادر ساعت موردنظر را لمس کنید، سپس یکی از دکمه‌ها را بزنید. ساعت نهایی را طبق نسخه‌ی پزشک یا برچسب دارو تنظیم کنید.</p>`;
 }
@@ -1278,8 +1292,8 @@ function viewFiles() {
     const ed = ui.editFile === f.client_id;
     return `<div class="card"><div class="fcard"><div class="fi">${esc(f.icon || "📁")}</div><div class="t"><b>${esc(f.title)}</b>
       <div class="muted">${faNum(n)} داروی فعال${lg.length ? " · پایبندی " + faNum(adherence(lg)) + "٪" : ""}</div>${f.note ? `<div class="muted">📝 ${esc(f.note)}</div>` : ""}
-      <div class="acts"><button class="btn small" onclick="goFile('add','${esc(f.client_id)}')">+ افزودن دارو</button><button class="btn sec small" onclick="goFile('today','${esc(f.client_id)}')">داروها</button><button class="btn sec small" onclick="goFile('record','${esc(f.client_id)}')">گزارش</button><button class="btn sec small" onclick="editFile('${esc(f.client_id)}')">✏️ ویرایش</button><button class="btn sec small" onclick="delFile('${esc(f.client_id)}')" aria-label="حذف پرونده">🗑</button></div></div></div>
-      ${ed ? `<label for="efTitle">نام پرونده</label><input id="efTitle" maxlength="60" value="${esc(f.title)}"><label for="efNote">توضیح (اختیاری)</label><input id="efNote" maxlength="300" value="${esc(f.note || "")}"><button class="btn" style="width:100%;margin-top:8px" onclick="saveFileEdit('${esc(f.client_id)}')">ذخیره</button>` : ""}</div>`;
+      <div class="acts"><button class="btn small" onclick="goFile('add',${jsq(f.client_id)})">+ افزودن دارو</button><button class="btn sec small" onclick="goFile('today',${jsq(f.client_id)})">داروها</button><button class="btn sec small" onclick="goFile('record',${jsq(f.client_id)})">گزارش</button><button class="btn sec small" onclick="editFile(${jsq(f.client_id)})">✏️ ویرایش</button><button class="btn sec small" onclick="delFile(${jsq(f.client_id)})" aria-label="حذف پرونده">🗑</button></div></div></div>
+      ${ed ? `<label for="efTitle">نام پرونده</label><input id="efTitle" maxlength="60" value="${esc(f.title)}"><label for="efNote">توضیح (اختیاری)</label><input id="efNote" maxlength="300" value="${esc(f.note || "")}"><button class="btn" style="width:100%;margin-top:8px" onclick="saveFileEdit(${jsq(f.client_id)})">ذخیره</button>` : ""}</div>`;
   };
   const loose = meds.filter((m) => !m.file_id).length;
   return `<div class="card"><h2>🗂 پرونده‌ی جدید</h2>
